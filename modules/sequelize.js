@@ -10,7 +10,9 @@ module.exports = async function psql() {
 		let db = {};
 		db.users = await UserModel(sequelize, Sequelize);
 
-		await sequelize.sync({ force: true });
+		await sequelize.sync({ force: false });
+
+		return db;
 	} catch (error) {
 		console.log(error);
 	}
