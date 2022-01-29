@@ -4,7 +4,7 @@ module.exports = class Keyboards {
 			keyboard: [
 				["Check balance", "Send Bulk Message"],
 				["Account stats", "Add accounts"],
-				["Add members"],
+				["Add members", "Prices"],
 			],
 			resize_keyboard: true,
 		};
