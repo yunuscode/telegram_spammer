@@ -1,0 +1,75 @@
+/// <reference types="node" />
+import { Api } from "../tl";
+import type { TelegramClient } from "./TelegramClient";
+import { EntityLike } from "../define";
+/**
+ * progress callback that will be called each time a new chunk is downloaded.
+ */
+export interface progressCallback {
+    (
+    /** float between 0 and 1 */
+    progress: number, 
+    /** other args to be passed if needed */
+    ...args: any[]): void;
+    /** When this value is set to true the download will stop */
+    isCanceled?: boolean;
+    /** Does nothing for now. */
+    acceptsBuffer?: boolean;
+}
+/**
+ * Low level interface for downloading files
+ */
+export interface DownloadFileParams {
+    /** The dcId that the file belongs to. Used to borrow a sender from that DC */
+    dcId: number;
+    /** How much to download. The library will download until it reaches this amount.<br/>
+     *  can be useful for downloading by chunks */
+    fileSize?: number;
+    /** Used to determine how many download tasks should be run in parallel. anything above 16 is unstable. */
+    workers?: number;
+    /** How much to download in each chunk. The larger the less requests to be made. (max is 512kb). */
+    partSizeKb?: number;
+    /** Where to start downloading. useful for chunk downloading. */
+    start?: number;
+    /** Where to stop downloading. useful for chunk downloading. */
+    end?: number;
+    /** Progress callback accepting one param. (progress :number) which is a float between 0 and 1 */
+    progressCallback?: progressCallback;
+}
+/**
+ * contains optional download params for profile photo.
+ */
+export interface DownloadProfilePhotoParams {
+    /** Whether to download the big version or the small one of the photo */
+    isBig?: boolean;
+}
+/** @hidden */
+export declare function downloadFile(client: TelegramClient, inputLocation: Api.TypeInputFileLocation, fileParams: DownloadFileParams): Promise<Buffer>;
+/**
+ * All of these are optional and will be calculated automatically if not specified.
+ */
+export interface DownloadMediaInterface {
+    sizeType?: string;
+    /** where to start downloading **/
+    start?: number;
+    /** where to stop downloading **/
+    end?: number;
+    /** a progress callback that will be called each time a new chunk is downloaded and passes a number between 0 and 1*/
+    progressCallback?: progressCallback;
+    /** number of workers to use while downloading. more means faster but anything above 16 may cause issues. */
+    workers?: number;
+}
+/** @hidden */
+export declare function downloadMedia(client: TelegramClient, messageOrMedia: Api.Message | Api.TypeMessageMedia, downloadParams: DownloadMediaInterface): Promise<Buffer>;
+/** @hidden */
+export declare function _downloadDocument(client: TelegramClient, doc: Api.MessageMediaDocument | Api.TypeDocument, args: DownloadMediaInterface): Promise<Buffer>;
+/** @hidden */
+export declare function _downloadContact(client: TelegramClient, media: Api.MessageMediaContact, args: DownloadMediaInterface): Promise<Buffer>;
+/** @hidden */
+export declare function _downloadWebDocument(client: TelegramClient, media: Api.WebDocument | Api.WebDocumentNoProxy, args: DownloadMediaInterface): Promise<Buffer>;
+/** @hidden */
+export declare function _downloadCachedPhotoSize(size: Api.PhotoCachedSize | Api.PhotoStrippedSize): Buffer;
+/** @hidden */
+export declare function _downloadPhoto(client: TelegramClient, photo: Api.MessageMediaPhoto | Api.Photo, args: DownloadMediaInterface): Promise<Buffer>;
+/** @hidden */
+export declare function downloadProfilePhoto(client: TelegramClient, entity: EntityLike, fileParams: DownloadProfilePhotoParams): Promise<Buffer>;

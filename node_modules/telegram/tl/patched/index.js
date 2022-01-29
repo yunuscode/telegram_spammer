@@ -1,0 +1,77 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.patchAll = void 0;
+const api_1 = require("../api");
+const message_1 = require("../custom/message");
+function getGetter(obj, prop) {
+    while (obj) {
+        let getter = Object.getOwnPropertyDescriptor(obj, prop);
+        if (getter && getter.get) {
+            return getter.get;
+        }
+        obj = Object.getPrototypeOf(obj);
+    }
+}
+function getSetter(obj, prop) {
+    while (obj) {
+        let getter = Object.getOwnPropertyDescriptor(obj, prop);
+        if (getter && getter.set) {
+            return getter.set;
+        }
+        obj = Object.getPrototypeOf(obj);
+    }
+}
+const getInstanceMethods = (obj) => {
+    let keys = {
+        methods: new Set(),
+        setters: new Set(),
+        getters: new Set(),
+    };
+    let topObject = obj;
+    const mapAllMethods = (property) => {
+        const getter = getGetter(topObject, property);
+        const setter = getSetter(topObject, property);
+        if (getter) {
+            keys["getters"].add(property);
+        }
+        else if (setter) {
+            keys["setters"].add(property);
+        }
+        else {
+            if (!(property == "constructor")) {
+                keys["methods"].add(property);
+            }
+        }
+    };
+    do {
+        Object.getOwnPropertyNames(obj).map(mapAllMethods);
+        // walk-up the prototype chain
+        obj = Object.getPrototypeOf(obj);
+    } while (
+    // not the the Object prototype methods (hasOwnProperty, etc...)
+    obj &&
+        Object.getPrototypeOf(obj));
+    return keys;
+};
+function patchClass(clazz) {
+    const { getters, setters, methods } = getInstanceMethods(message_1.CustomMessage.prototype);
+    for (const getter of getters) {
+        Object.defineProperty(clazz.prototype, getter, {
+            get: getGetter(message_1.CustomMessage.prototype, getter),
+        });
+    }
+    for (const setter of setters) {
+        Object.defineProperty(clazz.prototype, setter, {
+            set: getSetter(message_1.CustomMessage.prototype, setter),
+        });
+    }
+    for (const method of methods) {
+        clazz.prototype[method] = message_1.CustomMessage.prototype[method];
+    }
+}
+function patchAll() {
+    patchClass(api_1.Api.Message);
+    patchClass(api_1.Api.MessageService);
+}
+exports.patchAll = patchAll;
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiaW5kZXguanMiLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyIuLi8uLi8uLi9ncmFtanMvdGwvcGF0Y2hlZC9pbmRleC50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOzs7QUFBQSxnQ0FBNkI7QUFDN0IsK0NBQWtEO0FBR2xELFNBQVMsU0FBUyxDQUFDLEdBQVEsRUFBRSxJQUFZO0lBQ3JDLE9BQU8sR0FBRyxFQUFFO1FBQ1IsSUFBSSxNQUFNLEdBQUcsTUFBTSxDQUFDLHdCQUF3QixDQUFDLEdBQUcsRUFBRSxJQUFJLENBQUMsQ0FBQztRQUN4RCxJQUFJLE1BQU0sSUFBSSxNQUFNLENBQUMsR0FBRyxFQUFFO1lBQ3RCLE9BQU8sTUFBTSxDQUFDLEdBQUcsQ0FBQztTQUNyQjtRQUNELEdBQUcsR0FBRyxNQUFNLENBQUMsY0FBYyxDQUFDLEdBQUcsQ0FBQyxDQUFDO0tBQ3BDO0FBQ0wsQ0FBQztBQUVELFNBQVMsU0FBUyxDQUFDLEdBQVEsRUFBRSxJQUFZO0lBQ3JDLE9BQU8sR0FBRyxFQUFFO1FBQ1IsSUFBSSxNQUFNLEdBQUcsTUFBTSxDQUFDLHdCQUF3QixDQUFDLEdBQUcsRUFBRSxJQUFJLENBQUMsQ0FBQztRQUN4RCxJQUFJLE1BQU0sSUFBSSxNQUFNLENBQUMsR0FBRyxFQUFFO1lBQ3RCLE9BQU8sTUFBTSxDQUFDLEdBQUcsQ0FBQztTQUNyQjtRQUNELEdBQUcsR0FBRyxNQUFNLENBQUMsY0FBYyxDQUFDLEdBQUcsQ0FBQyxDQUFDO0tBQ3BDO0FBQ0wsQ0FBQztBQUVELE1BQU0sa0JBQWtCLEdBQUcsQ0FBQyxHQUFRLEVBQUUsRUFBRTtJQUNwQyxJQUFJLElBQUksR0FBRztRQUNQLE9BQU8sRUFBRSxJQUFJLEdBQUcsRUFBVTtRQUMxQixPQUFPLEVBQUUsSUFBSSxHQUFHLEVBQVU7UUFDMUIsT0FBTyxFQUFFLElBQUksR0FBRyxFQUFVO0tBQzdCLENBQUM7SUFDRixJQUFJLFNBQVMsR0FBRyxHQUFHLENBQUM7SUFFcEIsTUFBTSxhQUFhLEdBQUcsQ0FBQyxRQUFnQixFQUFFLEVBQUU7UUFDdkMsTUFBTSxNQUFNLEdBQUcsU0FBUyxDQUFDLFNBQVMsRUFBRSxRQUFRLENBQUMsQ0FBQztRQUM5QyxNQUFNLE1BQU0sR0FBRyxTQUFTLENBQUMsU0FBUyxFQUFFLFFBQVEsQ0FBQyxDQUFDO1FBQzlDLElBQUksTUFBTSxFQUFFO1lBQ1IsSUFBSSxDQUFDLFNBQVMsQ0FBQyxDQUFDLEdBQUcsQ0FBQyxRQUFRLENBQUMsQ0FBQztTQUNqQzthQUFNLElBQUksTUFBTSxFQUFFO1lBQ2YsSUFBSSxDQUFDLFNBQVMsQ0FBQyxDQUFDLEdBQUcsQ0FBQyxRQUFRLENBQUMsQ0FBQztTQUNqQzthQUFNO1lBQ0gsSUFBSSxDQUFDLENBQUMsUUFBUSxJQUFJLGFBQWEsQ0FBQyxFQUFFO2dCQUM5QixJQUFJLENBQUMsU0FBUyxDQUFDLENBQUMsR0FBRyxDQUFDLFFBQVEsQ0FBQyxDQUFDO2FBQ2pDO1NBQ0o7SUFDTCxDQUFDLENBQUM7SUFFRixHQUFHO1FBQ0MsTUFBTSxDQUFDLG1CQUFtQixDQUFDLEdBQUcsQ0FBQyxDQUFDLEdBQUcsQ0FBQyxhQUFhLENBQUMsQ0FBQztRQUVuRCw4QkFBOEI7UUFDOUIsR0FBRyxHQUFHLE1BQU0sQ0FBQyxjQUFjLENBQUMsR0FBRyxDQUFDLENBQUM7S0FDcEM7SUFDRyxnRUFBZ0U7SUFDaEUsR0FBRztRQUNILE1BQU0sQ0FBQyxjQUFjLENBQUMsR0FBRyxDQUFDLEVBQzVCO0lBRUYsT0FBTyxJQUFJLENBQUM7QUFDaEIsQ0FBQyxDQUFDO0FBRUYsU0FBUyxVQUFVLENBQUMsS0FBZTtJQUMvQixNQUFNLEVBQUUsT0FBTyxFQUFFLE9BQU8sRUFBRSxPQUFPLEVBQUUsR0FBRyxrQkFBa0IsQ0FDcEQsdUJBQWEsQ0FBQyxTQUFTLENBQzFCLENBQUM7SUFDRixLQUFLLE1BQU0sTUFBTSxJQUFJLE9BQU8sRUFBRTtRQUMxQixNQUFNLENBQUMsY0FBYyxDQUFDLEtBQUssQ0FBQyxTQUFTLEVBQUUsTUFBTSxFQUFFO1lBQzNDLEdBQUcsRUFBRSxTQUFTLENBQUMsdUJBQWEsQ0FBQyxTQUFTLEVBQUUsTUFBTSxDQUFDO1NBQ2xELENBQUMsQ0FBQztLQUNOO0lBQ0QsS0FBSyxNQUFNLE1BQU0sSUFBSSxPQUFPLEVBQUU7UUFDMUIsTUFBTSxDQUFDLGNBQWMsQ0FBQyxLQUFLLENBQUMsU0FBUyxFQUFFLE1BQU0sRUFBRTtZQUMzQyxHQUFHLEVBQUUsU0FBUyxDQUFDLHVCQUFhLENBQUMsU0FBUyxFQUFFLE1BQU0sQ0FBQztTQUNsRCxDQUFDLENBQUM7S0FDTjtJQUNELEtBQUssTUFBTSxNQUFNLElBQUksT0FBTyxFQUFFO1FBQzFCLEtBQUssQ0FBQyxTQUFTLENBQUMsTUFBTSxDQUFDLEdBQUksdUJBQWEsQ0FBQyxTQUFpQixDQUFDLE1BQU0sQ0FBQyxDQUFDO0tBQ3RFO0FBQ0wsQ0FBQztBQUVELFNBQVMsUUFBUTtJQUNiLFVBQVUsQ0FBQyxTQUFHLENBQUMsT0FBTyxDQUFDLENBQUM7SUFDeEIsVUFBVSxDQUFDLFNBQUcsQ0FBQyxjQUFjLENBQUMsQ0FBQztBQUNuQyxDQUFDO0FBRVEsNEJBQVEifQ==

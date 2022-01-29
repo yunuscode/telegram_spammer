@@ -1,0 +1,83 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.InlineResult = void 0;
+const api_1 = require("../api");
+const __1 = require("../../");
+const util_1 = require("util");
+const Helpers_1 = require("../../Helpers");
+class InlineResult {
+    constructor(client, original, queryId, entity) {
+        this._ARTICLE = "article";
+        this._PHOTO = "photo";
+        this._GIF = "gif";
+        this._VIDEO = "video";
+        this._VIDEO_GIF = "mpeg4_gif";
+        this._AUDIO = "audio";
+        this._DOCUMENT = "document";
+        this._LOCATION = "location";
+        this._VENUE = "venue";
+        this._CONTACT = "contact";
+        this._GAME = "game";
+        this._client = client;
+        this.result = original;
+        this._queryId = queryId;
+        this._entity = entity;
+    }
+    [util_1.inspect.custom]() {
+        return Helpers_1.betterConsoleLog(this);
+    }
+    get type() {
+        return this.result.type;
+    }
+    get message() {
+        return this.result.sendMessage;
+    }
+    get description() {
+        return this.result.description;
+    }
+    get url() {
+        if (this.result instanceof api_1.Api.BotInlineResult) {
+            return this.result.url;
+        }
+    }
+    get photo() {
+        if (this.result instanceof api_1.Api.BotInlineResult) {
+            return this.result.thumb;
+        }
+        else {
+            return this.result.photo;
+        }
+    }
+    get document() {
+        if (this.result instanceof api_1.Api.BotInlineResult) {
+            return this.result.content;
+        }
+        else {
+            return this.result.document;
+        }
+    }
+    async click(entity, replyTo, silent = false, clearDraft = false, hideVia = false) {
+        if (entity) {
+            entity = await this._client.getInputEntity(entity);
+        }
+        else if (this._entity) {
+            entity = this._entity;
+        }
+        else {
+            throw new Error("You must provide the entity where the result should be sent to");
+        }
+        const replyId = replyTo ? __1.utils.getMessageId(replyTo) : undefined;
+        const request = new api_1.Api.messages.SendInlineBotResult({
+            peer: entity,
+            queryId: this._queryId,
+            id: this.result.id,
+            silent: silent,
+            clearDraft: clearDraft,
+            hideVia: hideVia,
+            replyToMsgId: replyId,
+        });
+        return await this._client.invoke(request);
+    }
+}
+exports.InlineResult = InlineResult;
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiaW5saW5lUmVzdWx0LmpzIiwic291cmNlUm9vdCI6IiIsInNvdXJjZXMiOlsiLi4vLi4vLi4vZ3JhbWpzL3RsL2N1c3RvbS9pbmxpbmVSZXN1bHQudHMiXSwibmFtZXMiOltdLCJtYXBwaW5ncyI6Ijs7O0FBRUEsZ0NBQTZCO0FBQzdCLDhCQUErQjtBQUMvQiwrQkFBK0I7QUFDL0IsMkNBQWlEO0FBRWpELE1BQWEsWUFBWTtJQXFCckIsWUFDSSxNQUFzQixFQUN0QixRQUFpQyxFQUNqQyxPQUFrQixFQUNsQixNQUFtQjtRQXhCZixhQUFRLEdBQUcsU0FBUyxDQUFDO1FBQ3JCLFdBQU0sR0FBRyxPQUFPLENBQUM7UUFDakIsU0FBSSxHQUFHLEtBQUssQ0FBQztRQUNiLFdBQU0sR0FBRyxPQUFPLENBQUM7UUFDakIsZUFBVSxHQUFHLFdBQVcsQ0FBQztRQUN6QixXQUFNLEdBQUcsT0FBTyxDQUFDO1FBQ2pCLGNBQVMsR0FBRyxVQUFVLENBQUM7UUFDdkIsY0FBUyxHQUFHLFVBQVUsQ0FBQztRQUN2QixXQUFNLEdBQUcsT0FBTyxDQUFDO1FBQ2pCLGFBQVEsR0FBRyxTQUFTLENBQUM7UUFDckIsVUFBSyxHQUFHLE1BQU0sQ0FBQztRQWdCbkIsSUFBSSxDQUFDLE9BQU8sR0FBRyxNQUFNLENBQUM7UUFDdEIsSUFBSSxDQUFDLE1BQU0sR0FBRyxRQUFRLENBQUM7UUFDdkIsSUFBSSxDQUFDLFFBQVEsR0FBRyxPQUFPLENBQUM7UUFDeEIsSUFBSSxDQUFDLE9BQU8sR0FBRyxNQUFNLENBQUM7SUFDMUIsQ0FBQztJQWRELENBQUMsY0FBTyxDQUFDLE1BQU0sQ0FBQztRQUNaLE9BQU8sMEJBQWdCLENBQUMsSUFBSSxDQUFDLENBQUM7SUFDbEMsQ0FBQztJQWNELElBQUksSUFBSTtRQUNKLE9BQU8sSUFBSSxDQUFDLE1BQU0sQ0FBQyxJQUFJLENBQUM7SUFDNUIsQ0FBQztJQUVELElBQUksT0FBTztRQUNQLE9BQU8sSUFBSSxDQUFDLE1BQU0sQ0FBQyxXQUFXLENBQUM7SUFDbkMsQ0FBQztJQUVELElBQUksV0FBVztRQUNYLE9BQU8sSUFBSSxDQUFDLE1BQU0sQ0FBQyxXQUFXLENBQUM7SUFDbkMsQ0FBQztJQUVELElBQUksR0FBRztRQUNILElBQUksSUFBSSxDQUFDLE1BQU0sWUFBWSxTQUFHLENBQUMsZUFBZSxFQUFFO1lBQzVDLE9BQU8sSUFBSSxDQUFDLE1BQU0sQ0FBQyxHQUFHLENBQUM7U0FDMUI7SUFDTCxDQUFDO0lBRUQsSUFBSSxLQUFLO1FBQ0wsSUFBSSxJQUFJLENBQUMsTUFBTSxZQUFZLFNBQUcsQ0FBQyxlQUFlLEVBQUU7WUFDNUMsT0FBTyxJQUFJLENBQUMsTUFBTSxDQUFDLEtBQUssQ0FBQztTQUM1QjthQUFNO1lBQ0gsT0FBTyxJQUFJLENBQUMsTUFBTSxDQUFDLEtBQUssQ0FBQztTQUM1QjtJQUNMLENBQUM7SUFFRCxJQUFJLFFBQVE7UUFDUixJQUFJLElBQUksQ0FBQyxNQUFNLFlBQVksU0FBRyxDQUFDLGVBQWUsRUFBRTtZQUM1QyxPQUFPLElBQUksQ0FBQyxNQUFNLENBQUMsT0FBTyxDQUFDO1NBQzlCO2FBQU07WUFDSCxPQUFPLElBQUksQ0FBQyxNQUFNLENBQUMsUUFBUSxDQUFDO1NBQy9CO0lBQ0wsQ0FBQztJQUVELEtBQUssQ0FBQyxLQUFLLENBQ1AsTUFBbUIsRUFDbkIsT0FBdUIsRUFDdkIsU0FBa0IsS0FBSyxFQUN2QixhQUFzQixLQUFLLEVBQzNCLFVBQW1CLEtBQUs7UUFFeEIsSUFBSSxNQUFNLEVBQUU7WUFDUixNQUFNLEdBQUcsTUFBTSxJQUFJLENBQUMsT0FBTyxDQUFDLGNBQWMsQ0FBQyxNQUFNLENBQUMsQ0FBQztTQUN0RDthQUFNLElBQUksSUFBSSxDQUFDLE9BQU8sRUFBRTtZQUNyQixNQUFNLEdBQUcsSUFBSSxDQUFDLE9BQU8sQ0FBQztTQUN6QjthQUFNO1lBQ0gsTUFBTSxJQUFJLEtBQUssQ0FDWCxnRUFBZ0UsQ0FDbkUsQ0FBQztTQUNMO1FBQ0QsTUFBTSxPQUFPLEdBQUcsT0FBTyxDQUFDLENBQUMsQ0FBQyxTQUFLLENBQUMsWUFBWSxDQUFDLE9BQU8sQ0FBQyxDQUFDLENBQUMsQ0FBQyxTQUFTLENBQUM7UUFDbEUsTUFBTSxPQUFPLEdBQUcsSUFBSSxTQUFHLENBQUMsUUFBUSxDQUFDLG1CQUFtQixDQUFDO1lBQ2pELElBQUksRUFBRSxNQUFNO1lBQ1osT0FBTyxFQUFFLElBQUksQ0FBQyxRQUFRO1lBQ3RCLEVBQUUsRUFBRSxJQUFJLENBQUMsTUFBTSxDQUFDLEVBQUU7WUFDbEIsTUFBTSxFQUFFLE1BQU07WUFDZCxVQUFVLEVBQUUsVUFBVTtZQUN0QixPQUFPLEVBQUUsT0FBTztZQUNoQixZQUFZLEVBQUUsT0FBTztTQUN4QixDQUFDLENBQUM7UUFDSCxPQUFPLE1BQU0sSUFBSSxDQUFDLE9BQU8sQ0FBQyxNQUFNLENBQUMsT0FBTyxDQUFDLENBQUM7SUFDOUMsQ0FBQztDQWdCSjtBQTlHRCxvQ0E4R0MifQ==

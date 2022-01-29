@@ -1,0 +1,56 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ConnectionTCPFull = exports.FullPacketCodec = void 0;
+const Connection_1 = require("./Connection");
+const Helpers_1 = require("../../Helpers");
+const errors_1 = require("../../errors");
+class FullPacketCodec extends Connection_1.PacketCodec {
+    constructor(connection) {
+        super(connection);
+        this._sendCounter = 0; // Telegram will ignore us otherwise
+    }
+    encodePacket(data) {
+        // https://core.telegram.org/mtproto#tcp-transport
+        // total length, sequence number, packet and checksum (CRC32)
+        const length = data.length + 12;
+        const e = Buffer.alloc(8);
+        e.writeInt32LE(length, 0);
+        e.writeInt32LE(this._sendCounter, 4);
+        data = Buffer.concat([e, data]);
+        const crc = Buffer.alloc(4);
+        crc.writeUInt32LE(Helpers_1.crc32(data), 0);
+        this._sendCounter += 1;
+        return Buffer.concat([data, crc]);
+    }
+    /**
+     *
+     * @param reader {PromisedWebSockets}
+     * @returns {Promise<*>}
+     */
+    async readPacket(reader) {
+        const packetLenSeq = await reader.readExactly(8); // 4 and 4
+        // process.exit(0);
+        if (packetLenSeq === undefined) {
+            // Return empty buffer in case of issue
+            return Buffer.alloc(0);
+        }
+        const packetLen = packetLenSeq.readInt32LE(0);
+        let body = await reader.readExactly(packetLen - 8);
+        const checksum = body.slice(-4).readUInt32LE(0);
+        body = body.slice(0, -4);
+        const validChecksum = Helpers_1.crc32(Buffer.concat([packetLenSeq, body]));
+        if (!(validChecksum === checksum)) {
+            throw new errors_1.InvalidChecksumError(checksum, validChecksum);
+        }
+        return body;
+    }
+}
+exports.FullPacketCodec = FullPacketCodec;
+class ConnectionTCPFull extends Connection_1.Connection {
+    constructor() {
+        super(...arguments);
+        this.PacketCodecClass = FullPacketCodec;
+    }
+}
+exports.ConnectionTCPFull = ConnectionTCPFull;
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiVENQRnVsbC5qcyIsInNvdXJjZVJvb3QiOiIiLCJzb3VyY2VzIjpbIi4uLy4uLy4uL2dyYW1qcy9uZXR3b3JrL2Nvbm5lY3Rpb24vVENQRnVsbC50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOzs7QUFBQSw2Q0FBdUQ7QUFDdkQsMkNBQXNDO0FBQ3RDLHlDQUFvRDtBQUdwRCxNQUFhLGVBQWdCLFNBQVEsd0JBQVc7SUFHNUMsWUFBWSxVQUFlO1FBQ3ZCLEtBQUssQ0FBQyxVQUFVLENBQUMsQ0FBQztRQUNsQixJQUFJLENBQUMsWUFBWSxHQUFHLENBQUMsQ0FBQyxDQUFDLG9DQUFvQztJQUMvRCxDQUFDO0lBRUQsWUFBWSxDQUFDLElBQVk7UUFDckIsa0RBQWtEO1FBQ2xELDZEQUE2RDtRQUM3RCxNQUFNLE1BQU0sR0FBRyxJQUFJLENBQUMsTUFBTSxHQUFHLEVBQUUsQ0FBQztRQUNoQyxNQUFNLENBQUMsR0FBRyxNQUFNLENBQUMsS0FBSyxDQUFDLENBQUMsQ0FBQyxDQUFDO1FBQzFCLENBQUMsQ0FBQyxZQUFZLENBQUMsTUFBTSxFQUFFLENBQUMsQ0FBQyxDQUFDO1FBQzFCLENBQUMsQ0FBQyxZQUFZLENBQUMsSUFBSSxDQUFDLFlBQVksRUFBRSxDQUFDLENBQUMsQ0FBQztRQUNyQyxJQUFJLEdBQUcsTUFBTSxDQUFDLE1BQU0sQ0FBQyxDQUFDLENBQUMsRUFBRSxJQUFJLENBQUMsQ0FBQyxDQUFDO1FBQ2hDLE1BQU0sR0FBRyxHQUFHLE1BQU0sQ0FBQyxLQUFLLENBQUMsQ0FBQyxDQUFDLENBQUM7UUFDNUIsR0FBRyxDQUFDLGFBQWEsQ0FBQyxlQUFLLENBQUMsSUFBSSxDQUFDLEVBQUUsQ0FBQyxDQUFDLENBQUM7UUFDbEMsSUFBSSxDQUFDLFlBQVksSUFBSSxDQUFDLENBQUM7UUFDdkIsT0FBTyxNQUFNLENBQUMsTUFBTSxDQUFDLENBQUMsSUFBSSxFQUFFLEdBQUcsQ0FBQyxDQUFDLENBQUM7SUFDdEMsQ0FBQztJQUVEOzs7O09BSUc7SUFDSCxLQUFLLENBQUMsVUFBVSxDQUNaLE1BQStDO1FBRS9DLE1BQU0sWUFBWSxHQUFHLE1BQU0sTUFBTSxDQUFDLFdBQVcsQ0FBQyxDQUFDLENBQUMsQ0FBQyxDQUFDLFVBQVU7UUFDNUQsbUJBQW1CO1FBQ25CLElBQUksWUFBWSxLQUFLLFNBQVMsRUFBRTtZQUM1Qix1Q0FBdUM7WUFDdkMsT0FBTyxNQUFNLENBQUMsS0FBSyxDQUFDLENBQUMsQ0FBQyxDQUFDO1NBQzFCO1FBQ0QsTUFBTSxTQUFTLEdBQUcsWUFBWSxDQUFDLFdBQVcsQ0FBQyxDQUFDLENBQUMsQ0FBQztRQUM5QyxJQUFJLElBQUksR0FBRyxNQUFNLE1BQU0sQ0FBQyxXQUFXLENBQUMsU0FBUyxHQUFHLENBQUMsQ0FBQyxDQUFDO1FBQ25ELE1BQU0sUUFBUSxHQUFHLElBQUksQ0FBQyxLQUFLLENBQUMsQ0FBQyxDQUFDLENBQUMsQ0FBQyxZQUFZLENBQUMsQ0FBQyxDQUFDLENBQUM7UUFDaEQsSUFBSSxHQUFHLElBQUksQ0FBQyxLQUFLLENBQUMsQ0FBQyxFQUFFLENBQUMsQ0FBQyxDQUFDLENBQUM7UUFFekIsTUFBTSxhQUFhLEdBQUcsZUFBSyxDQUFDLE1BQU0sQ0FBQyxNQUFNLENBQUMsQ0FBQyxZQUFZLEVBQUUsSUFBSSxDQUFDLENBQUMsQ0FBQyxDQUFDO1FBQ2pFLElBQUksQ0FBQyxDQUFDLGFBQWEsS0FBSyxRQUFRLENBQUMsRUFBRTtZQUMvQixNQUFNLElBQUksNkJBQW9CLENBQUMsUUFBUSxFQUFFLGFBQWEsQ0FBQyxDQUFDO1NBQzNEO1FBQ0QsT0FBTyxJQUFJLENBQUM7SUFDaEIsQ0FBQztDQUNKO0FBL0NELDBDQStDQztBQUVELE1BQWEsaUJBQWtCLFNBQVEsdUJBQVU7SUFBakQ7O1FBQ0kscUJBQWdCLEdBQUcsZUFBZSxDQUFDO0lBQ3ZDLENBQUM7Q0FBQTtBQUZELDhDQUVDIn0=

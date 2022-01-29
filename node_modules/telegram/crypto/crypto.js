@@ -1,0 +1,117 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.createHash = exports.pbkdf2Sync = exports.Hash = exports.randomBytes = exports.createCipheriv = exports.createDecipheriv = exports.CTR = exports.Counter = void 0;
+const aes_1 = __importDefault(require("@cryptography/aes"));
+const converters_1 = require("./converters");
+const words_1 = require("./words");
+class Counter {
+    constructor(initialValue) {
+        this._counter = Buffer.from(initialValue);
+    }
+    increment() {
+        for (let i = 15; i >= 0; i--) {
+            if (this._counter[i] === 255) {
+                this._counter[i] = 0;
+            }
+            else {
+                this._counter[i]++;
+                break;
+            }
+        }
+    }
+}
+exports.Counter = Counter;
+class CTR {
+    constructor(key, counter) {
+        if (!(counter instanceof Counter)) {
+            counter = new Counter(counter);
+        }
+        this._counter = counter;
+        this._remainingCounter = undefined;
+        this._remainingCounterIndex = 16;
+        this._aes = new aes_1.default(words_1.getWords(key));
+    }
+    update(plainText) {
+        return this.encrypt(plainText);
+    }
+    encrypt(plainText) {
+        const encrypted = Buffer.from(plainText);
+        for (let i = 0; i < encrypted.length; i++) {
+            if (this._remainingCounterIndex === 16) {
+                this._remainingCounter = Buffer.from(converters_1.i2ab(this._aes.encrypt(converters_1.ab2i(this._counter._counter))));
+                this._remainingCounterIndex = 0;
+                this._counter.increment();
+            }
+            if (this._remainingCounter) {
+                encrypted[i] ^=
+                    this._remainingCounter[this._remainingCounterIndex++];
+            }
+        }
+        return encrypted;
+    }
+}
+exports.CTR = CTR;
+// endregion
+function createDecipheriv(algorithm, key, iv) {
+    if (algorithm.includes("ECB")) {
+        throw new Error("Not supported");
+    }
+    else {
+        return new CTR(key, iv);
+    }
+}
+exports.createDecipheriv = createDecipheriv;
+function createCipheriv(algorithm, key, iv) {
+    if (algorithm.includes("ECB")) {
+        throw new Error("Not supported");
+    }
+    else {
+        return new CTR(key, iv);
+    }
+}
+exports.createCipheriv = createCipheriv;
+function randomBytes(count) {
+    const bytes = new Uint8Array(count);
+    crypto.getRandomValues(bytes);
+    return bytes;
+}
+exports.randomBytes = randomBytes;
+class Hash {
+    constructor(algorithm) {
+        this.algorithm = algorithm;
+    }
+    update(data) {
+        //We shouldn't be needing new Uint8Array but it doesn't
+        //work without it
+        this.data = new Uint8Array(data);
+    }
+    async digest() {
+        if (this.data) {
+            if (this.algorithm === "sha1") {
+                return Buffer.from(await self.crypto.subtle.digest("SHA-1", this.data));
+            }
+            else if (this.algorithm === "sha256") {
+                return Buffer.from(await self.crypto.subtle.digest("SHA-256", this.data));
+            }
+        }
+    }
+}
+exports.Hash = Hash;
+async function pbkdf2Sync(password, salt, iterations) {
+    const passwordKey = await crypto.subtle.importKey("raw", password, { name: "PBKDF2" }, false, ["deriveBits"]);
+    return Buffer.from(await crypto.subtle.deriveBits({
+        name: "PBKDF2",
+        hash: "SHA-512",
+        salt,
+        iterations,
+    }, passwordKey, 512));
+}
+exports.pbkdf2Sync = pbkdf2Sync;
+function createHash(algorithm) {
+    return new Hash(algorithm);
+}
+exports.createHash = createHash;
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiY3J5cHRvLmpzIiwic291cmNlUm9vdCI6IiIsInNvdXJjZXMiOlsiLi4vLi4vZ3JhbWpzL2NyeXB0by9jcnlwdG8udHMiXSwibmFtZXMiOltdLCJtYXBwaW5ncyI6Ijs7Ozs7O0FBQUEsNERBQW1EO0FBQ25ELDZDQUEwQztBQUMxQyxtQ0FBbUM7QUFFbkMsTUFBYSxPQUFPO0lBR2hCLFlBQVksWUFBaUI7UUFDekIsSUFBSSxDQUFDLFFBQVEsR0FBRyxNQUFNLENBQUMsSUFBSSxDQUFDLFlBQVksQ0FBQyxDQUFDO0lBQzlDLENBQUM7SUFFRCxTQUFTO1FBQ0wsS0FBSyxJQUFJLENBQUMsR0FBRyxFQUFFLEVBQUUsQ0FBQyxJQUFJLENBQUMsRUFBRSxDQUFDLEVBQUUsRUFBRTtZQUMxQixJQUFJLElBQUksQ0FBQyxRQUFRLENBQUMsQ0FBQyxDQUFDLEtBQUssR0FBRyxFQUFFO2dCQUMxQixJQUFJLENBQUMsUUFBUSxDQUFDLENBQUMsQ0FBQyxHQUFHLENBQUMsQ0FBQzthQUN4QjtpQkFBTTtnQkFDSCxJQUFJLENBQUMsUUFBUSxDQUFDLENBQUMsQ0FBQyxFQUFFLENBQUM7Z0JBQ25CLE1BQU07YUFDVDtTQUNKO0lBQ0wsQ0FBQztDQUNKO0FBakJELDBCQWlCQztBQUVELE1BQWEsR0FBRztJQU1aLFlBQVksR0FBVyxFQUFFLE9BQVk7UUFDakMsSUFBSSxDQUFDLENBQUMsT0FBTyxZQUFZLE9BQU8sQ0FBQyxFQUFFO1lBQy9CLE9BQU8sR0FBRyxJQUFJLE9BQU8sQ0FBQyxPQUFPLENBQUMsQ0FBQztTQUNsQztRQUVELElBQUksQ0FBQyxRQUFRLEdBQUcsT0FBTyxDQUFDO1FBRXhCLElBQUksQ0FBQyxpQkFBaUIsR0FBRyxTQUFTLENBQUM7UUFDbkMsSUFBSSxDQUFDLHNCQUFzQixHQUFHLEVBQUUsQ0FBQztRQUVqQyxJQUFJLENBQUMsSUFBSSxHQUFHLElBQUksYUFBRyxDQUFDLGdCQUFRLENBQUMsR0FBRyxDQUFDLENBQUMsQ0FBQztJQUN2QyxDQUFDO0lBRUQsTUFBTSxDQUFDLFNBQWM7UUFDakIsT0FBTyxJQUFJLENBQUMsT0FBTyxDQUFDLFNBQVMsQ0FBQyxDQUFDO0lBQ25DLENBQUM7SUFFRCxPQUFPLENBQUMsU0FBYztRQUNsQixNQUFNLFNBQVMsR0FBRyxNQUFNLENBQUMsSUFBSSxDQUFDLFNBQVMsQ0FBQyxDQUFDO1FBRXpDLEtBQUssSUFBSSxDQUFDLEdBQUcsQ0FBQyxFQUFFLENBQUMsR0FBRyxTQUFTLENBQUMsTUFBTSxFQUFFLENBQUMsRUFBRSxFQUFFO1lBQ3ZDLElBQUksSUFBSSxDQUFDLHNCQUFzQixLQUFLLEVBQUUsRUFBRTtnQkFDcEMsSUFBSSxDQUFDLGlCQUFpQixHQUFHLE1BQU0sQ0FBQyxJQUFJLENBQ2hDLGlCQUFJLENBQUMsSUFBSSxDQUFDLElBQUksQ0FBQyxPQUFPLENBQUMsaUJBQUksQ0FBQyxJQUFJLENBQUMsUUFBUSxDQUFDLFFBQVEsQ0FBQyxDQUFDLENBQUMsQ0FDeEQsQ0FBQztnQkFDRixJQUFJLENBQUMsc0JBQXNCLEdBQUcsQ0FBQyxDQUFDO2dCQUNoQyxJQUFJLENBQUMsUUFBUSxDQUFDLFNBQVMsRUFBRSxDQUFDO2FBQzdCO1lBQ0QsSUFBSSxJQUFJLENBQUMsaUJBQWlCLEVBQUU7Z0JBQ3hCLFNBQVMsQ0FBQyxDQUFDLENBQUM7b0JBQ1IsSUFBSSxDQUFDLGlCQUFpQixDQUFDLElBQUksQ0FBQyxzQkFBc0IsRUFBRSxDQUFDLENBQUM7YUFDN0Q7U0FDSjtRQUVELE9BQU8sU0FBUyxDQUFDO0lBQ3JCLENBQUM7Q0FDSjtBQTFDRCxrQkEwQ0M7QUFFRCxZQUFZO0FBQ1osU0FBZ0IsZ0JBQWdCLENBQUMsU0FBaUIsRUFBRSxHQUFXLEVBQUUsRUFBVTtJQUN2RSxJQUFJLFNBQVMsQ0FBQyxRQUFRLENBQUMsS0FBSyxDQUFDLEVBQUU7UUFDM0IsTUFBTSxJQUFJLEtBQUssQ0FBQyxlQUFlLENBQUMsQ0FBQztLQUNwQztTQUFNO1FBQ0gsT0FBTyxJQUFJLEdBQUcsQ0FBQyxHQUFHLEVBQUUsRUFBRSxDQUFDLENBQUM7S0FDM0I7QUFDTCxDQUFDO0FBTkQsNENBTUM7QUFFRCxTQUFnQixjQUFjLENBQUMsU0FBaUIsRUFBRSxHQUFXLEVBQUUsRUFBVTtJQUNyRSxJQUFJLFNBQVMsQ0FBQyxRQUFRLENBQUMsS0FBSyxDQUFDLEVBQUU7UUFDM0IsTUFBTSxJQUFJLEtBQUssQ0FBQyxlQUFlLENBQUMsQ0FBQztLQUNwQztTQUFNO1FBQ0gsT0FBTyxJQUFJLEdBQUcsQ0FBQyxHQUFHLEVBQUUsRUFBRSxDQUFDLENBQUM7S0FDM0I7QUFDTCxDQUFDO0FBTkQsd0NBTUM7QUFFRCxTQUFnQixXQUFXLENBQUMsS0FBYTtJQUNyQyxNQUFNLEtBQUssR0FBRyxJQUFJLFVBQVUsQ0FBQyxLQUFLLENBQUMsQ0FBQztJQUNwQyxNQUFNLENBQUMsZUFBZSxDQUFDLEtBQUssQ0FBQyxDQUFDO0lBQzlCLE9BQU8sS0FBSyxDQUFDO0FBQ2pCLENBQUM7QUFKRCxrQ0FJQztBQUVELE1BQWEsSUFBSTtJQUliLFlBQVksU0FBaUI7UUFDekIsSUFBSSxDQUFDLFNBQVMsR0FBRyxTQUFTLENBQUM7SUFDL0IsQ0FBQztJQUVELE1BQU0sQ0FBQyxJQUFZO1FBQ2YsdURBQXVEO1FBQ3ZELGlCQUFpQjtRQUNqQixJQUFJLENBQUMsSUFBSSxHQUFHLElBQUksVUFBVSxDQUFDLElBQUksQ0FBQyxDQUFDO0lBQ3JDLENBQUM7SUFFRCxLQUFLLENBQUMsTUFBTTtRQUNSLElBQUksSUFBSSxDQUFDLElBQUksRUFBRTtZQUNYLElBQUksSUFBSSxDQUFDLFNBQVMsS0FBSyxNQUFNLEVBQUU7Z0JBQzNCLE9BQU8sTUFBTSxDQUFDLElBQUksQ0FDZCxNQUFNLElBQUksQ0FBQyxNQUFNLENBQUMsTUFBTSxDQUFDLE1BQU0sQ0FBQyxPQUFPLEVBQUUsSUFBSSxDQUFDLElBQUksQ0FBQyxDQUN0RCxDQUFDO2FBQ0w7aUJBQU0sSUFBSSxJQUFJLENBQUMsU0FBUyxLQUFLLFFBQVEsRUFBRTtnQkFDcEMsT0FBTyxNQUFNLENBQUMsSUFBSSxDQUNkLE1BQU0sSUFBSSxDQUFDLE1BQU0sQ0FBQyxNQUFNLENBQUMsTUFBTSxDQUFDLFNBQVMsRUFBRSxJQUFJLENBQUMsSUFBSSxDQUFDLENBQ3hELENBQUM7YUFDTDtTQUNKO0lBQ0wsQ0FBQztDQUNKO0FBM0JELG9CQTJCQztBQUVNLEtBQUssVUFBVSxVQUFVLENBQUMsUUFBYSxFQUFFLElBQVMsRUFBRSxVQUFlO0lBQ3RFLE1BQU0sV0FBVyxHQUFHLE1BQU0sTUFBTSxDQUFDLE1BQU0sQ0FBQyxTQUFTLENBQzdDLEtBQUssRUFDTCxRQUFRLEVBQ1IsRUFBRSxJQUFJLEVBQUUsUUFBUSxFQUFFLEVBQ2xCLEtBQUssRUFDTCxDQUFDLFlBQVksQ0FBQyxDQUNqQixDQUFDO0lBQ0YsT0FBTyxNQUFNLENBQUMsSUFBSSxDQUNkLE1BQU0sTUFBTSxDQUFDLE1BQU0sQ0FBQyxVQUFVLENBQzFCO1FBQ0ksSUFBSSxFQUFFLFFBQVE7UUFDZCxJQUFJLEVBQUUsU0FBUztRQUNmLElBQUk7UUFDSixVQUFVO0tBQ2IsRUFDRCxXQUFXLEVBQ1gsR0FBRyxDQUNOLENBQ0osQ0FBQztBQUNOLENBQUM7QUFwQkQsZ0NBb0JDO0FBRUQsU0FBZ0IsVUFBVSxDQUFDLFNBQWlCO0lBQ3hDLE9BQU8sSUFBSSxJQUFJLENBQUMsU0FBUyxDQUFDLENBQUM7QUFDL0IsQ0FBQztBQUZELGdDQUVDIn0=

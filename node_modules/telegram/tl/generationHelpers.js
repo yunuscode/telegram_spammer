@@ -1,0 +1,287 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.variableSnakeToCamelCase = exports.snakeToCamelCase = exports.CORE_TYPES = exports.fromLine = exports.buildArgConfig = exports.parseTl = exports.findAll = exports.serializeDate = exports.serializeBytes = void 0;
+const Helpers_1 = require("../Helpers");
+const snakeToCamelCase = (name) => {
+    const result = name.replace(/(?:^|_)([a-z])/g, (_, g) => g.toUpperCase());
+    return result.replace(/_/g, "");
+};
+exports.snakeToCamelCase = snakeToCamelCase;
+const variableSnakeToCamelCase = (str) => str.replace(/([-_][a-z])/g, (group) => group.toUpperCase().replace("-", "").replace("_", ""));
+exports.variableSnakeToCamelCase = variableSnakeToCamelCase;
+const CORE_TYPES = new Set([
+    0xbc799737,
+    0x997275b5,
+    0x3fedd339,
+    0xc4b9f9bb,
+    0x56730bcc, // null#56730bcc = Null;
+]);
+exports.CORE_TYPES = CORE_TYPES;
+const AUTH_KEY_TYPES = new Set([
+    0x05162463,
+    0x83c95aec,
+    0xa9f55f95,
+    0x3c6a84d4,
+    0x56fddf88,
+    0xd0e8075c,
+    0xb5890dba,
+    0x6643b654,
+    0xd712e4be,
+    0xf5045f1f,
+    0x3072cfa1, // gzip_packed
+]);
+const fromLine = (line, isFunction) => {
+    const match = line.match(/([\w.]+)(?:#([0-9a-fA-F]+))?(?:\s{?\w+:[\w\d<>#.?!]+}?)*\s=\s([\w\d<>#.?]+);$/);
+    if (!match) {
+        // Probably "vector#1cb5c415 {t:Type} # [ t ] = Vector t;"
+        throw new Error(`Cannot parse TLObject ${line}`);
+    }
+    const argsMatch = findAll(/({)?(\w+):([\w\d<>#.?!]+)}?/, line);
+    const currentConfig = {
+        name: match[1],
+        constructorId: parseInt(match[2], 16),
+        argsConfig: {},
+        subclassOfId: Helpers_1.crc32(match[3]),
+        result: match[3],
+        isFunction: isFunction,
+        namespace: undefined,
+    };
+    if (!currentConfig.constructorId) {
+        const hexId = "";
+        let args;
+        if (Object.values(currentConfig.argsConfig).length) {
+            args = ` ${Object.keys(currentConfig.argsConfig)
+                .map((arg) => arg.toString())
+                .join(" ")}`;
+        }
+        else {
+            args = "";
+        }
+        const representation = `${currentConfig.name}${hexId}${args} = ${currentConfig.result}`
+            .replace(/(:|\?)bytes /g, "$1string ")
+            .replace(/</g, " ")
+            .replace(/>|{|}/g, "")
+            .replace(/ \w+:flags\.\d+\?true/g, "");
+        if (currentConfig.name === "inputMediaInvoice") {
+            // eslint-disable-next-line no-empty
+            if (currentConfig.name === "inputMediaInvoice") {
+            }
+        }
+        currentConfig.constructorId = Helpers_1.crc32(Buffer.from(representation, "utf8"));
+    }
+    for (const [brace, name, argType] of argsMatch) {
+        if (brace === undefined) {
+            // @ts-ignore
+            currentConfig.argsConfig[variableSnakeToCamelCase(name)] =
+                buildArgConfig(name, argType);
+        }
+    }
+    if (currentConfig.name.includes(".")) {
+        [currentConfig.namespace, currentConfig.name] =
+            currentConfig.name.split(/\.(.+)/);
+    }
+    currentConfig.name = snakeToCamelCase(currentConfig.name);
+    /*
+    for (const arg in currentConfig.argsConfig){
+      if (currentConfig.argsConfig.hasOwnProperty(arg)){
+        if (currentConfig.argsConfig[arg].flagIndicator){
+          delete  currentConfig.argsConfig[arg]
+        }
+      }
+    }*/
+    return currentConfig;
+};
+exports.fromLine = fromLine;
+function buildArgConfig(name, argType) {
+    name = name === "self" ? "is_self" : name;
+    // Default values
+    const currentConfig = {
+        isVector: false,
+        isFlag: false,
+        skipConstructorId: false,
+        flagIndex: -1,
+        flagIndicator: true,
+        type: null,
+        useVectorId: null,
+    };
+    // Special case: some types can be inferred, which makes it
+    // less annoying to type. Currently the only type that can
+    // be inferred is if the name is 'random_id', to which a
+    // random ID will be assigned if left as None (the default)
+    const canBeInferred = name === "random_id";
+    // The type can be an indicator that other arguments will be flags
+    if (argType !== "#") {
+        currentConfig.flagIndicator = false;
+        // Strip the exclamation mark always to have only the name
+        currentConfig.type = argType.replace(/^!+/, "");
+        // The type may be a flag (flags.IDX?REAL_TYPE)
+        // Note that 'flags' is NOT the flags name; this
+        // is determined by a previous argument
+        // However, we assume that the argument will always be called 'flags'
+        // @ts-ignore
+        const flagMatch = currentConfig.type.match(/flags.(\d+)\?([\w<>.]+)/);
+        if (flagMatch) {
+            currentConfig.isFlag = true;
+            currentConfig.flagIndex = Number(flagMatch[1]);
+            // Update the type to match the exact type, not the "flagged" one
+            [, , currentConfig.type] = flagMatch;
+        }
+        // Then check if the type is a Vector<REAL_TYPE>
+        // @ts-ignore
+        const vectorMatch = currentConfig.type.match(/[Vv]ector<([\w\d.]+)>/);
+        if (vectorMatch) {
+            currentConfig.isVector = true;
+            // If the type's first letter is not uppercase, then
+            // it is a constructor and we use (read/write) its ID.
+            // @ts-ignore
+            currentConfig.useVectorId = currentConfig.type.charAt(0) === "V";
+            // Update the type to match the one inside the vector
+            [, currentConfig.type] = vectorMatch;
+        }
+        // See use_vector_id. An example of such case is ipPort in
+        // help.configSpecial
+        // @ts-ignore
+        if (/^[a-z]$/.test(currentConfig.type.split(".").pop().charAt(0))) {
+            currentConfig.skipConstructorId = true;
+        }
+        // The name may contain "date" in it, if this is the case and
+        // the type is "int", we can safely assume that this should be
+        // treated as a "date" object. Note that this is not a valid
+        // Telegram object, but it's easier to work with
+        // if (
+        //     this.type === 'int' &&
+        //     (/(\b|_)([dr]ate|until|since)(\b|_)/.test(name) ||
+        //         ['expires', 'expires_at', 'was_online'].includes(name))
+        // ) {
+        //     this.type = 'date';
+        // }
+    }
+    // workaround
+    if (currentConfig.type == "future_salt") {
+        currentConfig.type = "FutureSalt";
+    }
+    return currentConfig;
+}
+exports.buildArgConfig = buildArgConfig;
+const parseTl = function* (content, layer, methods = [], ignoreIds = CORE_TYPES) {
+    const methodInfo = (methods || []).reduce((o, m) => (Object.assign(Object.assign({}, o), { [m.name]: m })), {});
+    const objAll = [];
+    const objByName = {};
+    const objByType = {};
+    const file = content;
+    let isFunction = false;
+    for (let line of file.split("\n")) {
+        const commentIndex = line.indexOf("//");
+        if (commentIndex !== -1) {
+            line = line.slice(0, commentIndex);
+        }
+        line = line.trim();
+        if (!line) {
+            continue;
+        }
+        const match = line.match(/---(\w+)---/);
+        if (match) {
+            const [, followingTypes] = match;
+            isFunction = followingTypes === "functions";
+            continue;
+        }
+        try {
+            const result = fromLine(line, isFunction);
+            if (ignoreIds.has(result.constructorId)) {
+                continue;
+            }
+            objAll.push(result);
+            if (!result.isFunction) {
+                if (!objByType[result.result]) {
+                    objByType[result.result] = [];
+                }
+                objByName[result.name] = result;
+                objByType[result.result].push(result);
+            }
+        }
+        catch (e) {
+            if (!e.toString().includes("vector#1cb5c415")) {
+                throw e;
+            }
+        }
+    }
+    // Once all objects have been parsed, replace the
+    // string type from the arguments with references
+    for (const obj of objAll) {
+        if (AUTH_KEY_TYPES.has(obj.constructorId)) {
+            for (const arg in obj.argsConfig) {
+                if (obj.argsConfig[arg].type === "string") {
+                    obj.argsConfig[arg].type = "bytes";
+                }
+            }
+        }
+    }
+    for (const obj of objAll) {
+        yield obj;
+    }
+};
+exports.parseTl = parseTl;
+const findAll = (regex, str, matches = []) => {
+    if (!regex.flags.includes("g")) {
+        regex = new RegExp(regex.source, "g");
+    }
+    const res = regex.exec(str);
+    if (res) {
+        matches.push(res.slice(1));
+        findAll(regex, str, matches);
+    }
+    return matches;
+};
+exports.findAll = findAll;
+function serializeBytes(data) {
+    if (!(data instanceof Buffer)) {
+        if (typeof data == "string") {
+            data = Buffer.from(data);
+        }
+        else {
+            throw Error(`Bytes or str expected, not ${data.constructor.name}`);
+        }
+    }
+    const r = [];
+    let padding;
+    if (data.length < 254) {
+        padding = (data.length + 1) % 4;
+        if (padding !== 0) {
+            padding = 4 - padding;
+        }
+        r.push(Buffer.from([data.length]));
+        r.push(data);
+    }
+    else {
+        padding = data.length % 4;
+        if (padding !== 0) {
+            padding = 4 - padding;
+        }
+        r.push(Buffer.from([
+            254,
+            data.length % 256,
+            (data.length >> 8) % 256,
+            (data.length >> 16) % 256,
+        ]));
+        r.push(data);
+    }
+    r.push(Buffer.alloc(padding).fill(0));
+    return Buffer.concat(r);
+}
+exports.serializeBytes = serializeBytes;
+function serializeDate(dt) {
+    if (!dt) {
+        return Buffer.alloc(4).fill(0);
+    }
+    if (dt instanceof Date) {
+        dt = Math.floor((Date.now() - dt.getTime()) / 1000);
+    }
+    if (typeof dt == "number") {
+        const t = Buffer.alloc(4);
+        t.writeInt32LE(dt, 0);
+        return t;
+    }
+    throw Error(`Cannot interpret "${dt}" as a date`);
+}
+exports.serializeDate = serializeDate;
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiZ2VuZXJhdGlvbkhlbHBlcnMuanMiLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyIuLi8uLi9ncmFtanMvdGwvZ2VuZXJhdGlvbkhlbHBlcnMudHMiXSwibmFtZXMiOltdLCJtYXBwaW5ncyI6Ijs7O0FBQUEsd0NBQW1DO0FBR25DLE1BQU0sZ0JBQWdCLEdBQUcsQ0FBQyxJQUFZLEVBQUUsRUFBRTtJQUN0QyxNQUFNLE1BQU0sR0FBRyxJQUFJLENBQUMsT0FBTyxDQUFDLGlCQUFpQixFQUFFLENBQUMsQ0FBQyxFQUFFLENBQUMsRUFBRSxFQUFFLENBQUMsQ0FBQyxDQUFDLFdBQVcsRUFBRSxDQUFDLENBQUM7SUFDMUUsT0FBTyxNQUFNLENBQUMsT0FBTyxDQUFDLElBQUksRUFBRSxFQUFFLENBQUMsQ0FBQztBQUNwQyxDQUFDLENBQUM7QUE0VUUsNENBQWdCO0FBM1VwQixNQUFNLHdCQUF3QixHQUFHLENBQUMsR0FBVyxFQUFFLEVBQUUsQ0FDN0MsR0FBRyxDQUFDLE9BQU8sQ0FBQyxjQUFjLEVBQUUsQ0FBQyxLQUFLLEVBQUUsRUFBRSxDQUNsQyxLQUFLLENBQUMsV0FBVyxFQUFFLENBQUMsT0FBTyxDQUFDLEdBQUcsRUFBRSxFQUFFLENBQUMsQ0FBQyxPQUFPLENBQUMsR0FBRyxFQUFFLEVBQUUsQ0FBQyxDQUN4RCxDQUFDO0FBeVVGLDREQUF3QjtBQXZVNUIsTUFBTSxVQUFVLEdBQUcsSUFBSSxHQUFHLENBQUM7SUFDdkIsVUFBVTtJQUNWLFVBQVU7SUFDVixVQUFVO0lBQ1YsVUFBVTtJQUNWLFVBQVUsRUFBRSx3QkFBd0I7Q0FDdkMsQ0FBQyxDQUFDO0FBK1RDLGdDQUFVO0FBOVRkLE1BQU0sY0FBYyxHQUFHLElBQUksR0FBRyxDQUFDO0lBQzNCLFVBQVU7SUFDVixVQUFVO0lBQ1YsVUFBVTtJQUNWLFVBQVU7SUFDVixVQUFVO0lBQ1YsVUFBVTtJQUNWLFVBQVU7SUFDVixVQUFVO0lBQ1YsVUFBVTtJQUNWLFVBQVU7SUFDVixVQUFVLEVBQUUsY0FBYztD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

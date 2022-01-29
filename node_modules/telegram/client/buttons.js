@@ -1,0 +1,88 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.buildReplyMarkup = void 0;
+const tl_1 = require("../tl");
+const button_1 = require("../tl/custom/button");
+const messageButton_1 = require("../tl/custom/messageButton");
+const Helpers_1 = require("../Helpers");
+// ButtonMethods
+/** @hidden */
+function buildReplyMarkup(buttons, inlineOnly = false) {
+    if (buttons == undefined) {
+        return undefined;
+    }
+    if ("SUBCLASS_OF_ID" in buttons) {
+        if (buttons.SUBCLASS_OF_ID == 0xe2e10ef2) {
+            return buttons;
+        }
+    }
+    if (!Helpers_1.isArrayLike(buttons)) {
+        buttons = [[buttons]];
+    }
+    else if (!buttons || !Helpers_1.isArrayLike(buttons[0])) {
+        // @ts-ignore
+        buttons = [buttons];
+    }
+    let isInline = false;
+    let isNormal = false;
+    let resize = undefined;
+    const singleUse = false;
+    const selective = false;
+    const rows = [];
+    // @ts-ignore
+    for (const row of buttons) {
+        const current = [];
+        for (let button of row) {
+            if (button instanceof button_1.Button) {
+                if (button.resize != undefined) {
+                    resize = button.resize;
+                }
+                if (button.singleUse != undefined) {
+                    resize = button.singleUse;
+                }
+                if (button.selective != undefined) {
+                    resize = button.selective;
+                }
+                button = button.button;
+            }
+            else if (button instanceof messageButton_1.MessageButton) {
+                button = button.button;
+            }
+            const inline = button_1.Button._isInline(button);
+            if (!isInline && inline) {
+                isInline = true;
+            }
+            if (!isNormal && inline) {
+                isNormal = false;
+            }
+            if (button.SUBCLASS_OF_ID == 0xbad74a3) {
+                // 0xbad74a3 == crc32(b'KeyboardButton')
+                current.push(button);
+            }
+        }
+        if (current) {
+            rows.push(new tl_1.Api.KeyboardButtonRow({
+                buttons: current,
+            }));
+        }
+    }
+    if (inlineOnly && isNormal) {
+        throw new Error("You cannot use non-inline buttons here");
+    }
+    else if (isInline === isNormal && isNormal) {
+        throw new Error("You cannot mix inline with normal buttons");
+    }
+    else if (isInline) {
+        return new tl_1.Api.ReplyInlineMarkup({
+            rows: rows,
+        });
+    }
+    return new tl_1.Api.ReplyKeyboardMarkup({
+        rows: rows,
+        resize: resize,
+        singleUse: singleUse,
+        selective: selective,
+    });
+}
+exports.buildReplyMarkup = buildReplyMarkup;
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiYnV0dG9ucy5qcyIsInNvdXJjZVJvb3QiOiIiLCJzb3VyY2VzIjpbIi4uLy4uL2dyYW1qcy9jbGllbnQvYnV0dG9ucy50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOzs7QUFBQSw4QkFBNEI7QUFFNUIsZ0RBQTZDO0FBQzdDLDhEQUEyRDtBQUMzRCx3Q0FBeUM7QUFFekMsZ0JBQWdCO0FBQ2hCLGNBQWM7QUFDZCxTQUFnQixnQkFBZ0IsQ0FDNUIsT0FLb0IsRUFDcEIsYUFBc0IsS0FBSztJQUUzQixJQUFJLE9BQU8sSUFBSSxTQUFTLEVBQUU7UUFDdEIsT0FBTyxTQUFTLENBQUM7S0FDcEI7SUFDRCxJQUFJLGdCQUFnQixJQUFJLE9BQU8sRUFBRTtRQUM3QixJQUFJLE9BQU8sQ0FBQyxjQUFjLElBQUksVUFBVSxFQUFFO1lBQ3RDLE9BQU8sT0FBTyxDQUFDO1NBQ2xCO0tBQ0o7SUFDRCxJQUFJLENBQUMscUJBQVcsQ0FBQyxPQUFPLENBQUMsRUFBRTtRQUN2QixPQUFPLEdBQUcsQ0FBQyxDQUFDLE9BQU8sQ0FBQyxDQUFDLENBQUM7S0FDekI7U0FBTSxJQUFJLENBQUMsT0FBTyxJQUFJLENBQUMscUJBQVcsQ0FBQyxPQUFPLENBQUMsQ0FBQyxDQUFDLENBQUMsRUFBRTtRQUM3QyxhQUFhO1FBQ2IsT0FBTyxHQUFHLENBQUMsT0FBTyxDQUFDLENBQUM7S0FDdkI7SUFDRCxJQUFJLFFBQVEsR0FBRyxLQUFLLENBQUM7SUFDckIsSUFBSSxRQUFRLEdBQUcsS0FBSyxDQUFDO0lBQ3JCLElBQUksTUFBTSxHQUFHLFNBQVMsQ0FBQztJQUN2QixNQUFNLFNBQVMsR0FBRyxLQUFLLENBQUM7SUFDeEIsTUFBTSxTQUFTLEdBQUcsS0FBSyxDQUFDO0lBRXhCLE1BQU0sSUFBSSxHQUFHLEVBQUUsQ0FBQztJQUNoQixhQUFhO0lBQ2IsS0FBSyxNQUFNLEdBQUcsSUFBSSxPQUFPLEVBQUU7UUFDdkIsTUFBTSxPQUFPLEdBQUcsRUFBRSxDQUFDO1FBQ25CLEtBQUssSUFBSSxNQUFNLElBQUksR0FBRyxFQUFFO1lBQ3BCLElBQUksTUFBTSxZQUFZLGVBQU0sRUFBRTtnQkFDMUIsSUFBSSxNQUFNLENBQUMsTUFBTSxJQUFJLFNBQVMsRUFBRTtvQkFDNUIsTUFBTSxHQUFHLE1BQU0sQ0FBQyxNQUFNLENBQUM7aUJBQzFCO2dCQUNELElBQUksTUFBTSxDQUFDLFNBQVMsSUFBSSxTQUFTLEVBQUU7b0JBQy9CLE1BQU0sR0FBRyxNQUFNLENBQUMsU0FBUyxDQUFDO2lCQUM3QjtnQkFDRCxJQUFJLE1BQU0sQ0FBQyxTQUFTLElBQUksU0FBUyxFQUFFO29CQUMvQixNQUFNLEdBQUcsTUFBTSxDQUFDLFNBQVMsQ0FBQztpQkFDN0I7Z0JBQ0QsTUFBTSxHQUFHLE1BQU0sQ0FBQyxNQUFNLENBQUM7YUFDMUI7aUJBQU0sSUFBSSxNQUFNLFlBQVksNkJBQWEsRUFBRTtnQkFDeEMsTUFBTSxHQUFHLE1BQU0sQ0FBQyxNQUFNLENBQUM7YUFDMUI7WUFDRCxNQUFNLE1BQU0sR0FBRyxlQUFNLENBQUMsU0FBUyxDQUFDLE1BQU0sQ0FBQyxDQUFDO1lBQ3hDLElBQUksQ0FBQyxRQUFRLElBQUksTUFBTSxFQUFFO2dCQUNyQixRQUFRLEdBQUcsSUFBSSxDQUFDO2FBQ25CO1lBQ0QsSUFBSSxDQUFDLFFBQVEsSUFBSSxNQUFNLEVBQUU7Z0JBQ3JCLFFBQVEsR0FBRyxLQUFLLENBQUM7YUFDcEI7WUFDRCxJQUFJLE1BQU0sQ0FBQyxjQUFjLElBQUksU0FBUyxFQUFFO2dCQUNwQyx3Q0FBd0M7Z0JBQ3hDLE9BQU8sQ0FBQyxJQUFJLENBQUMsTUFBTSxDQUFDLENBQUM7YUFDeEI7U0FDSjtRQUNELElBQUksT0FBTyxFQUFFO1lBQ1QsSUFBSSxDQUFDLElBQUksQ0FDTCxJQUFJLFFBQUcsQ0FBQyxpQkFBaUIsQ0FBQztnQkFDdEIsT0FBTyxFQUFFLE9BQU87YUFDbkIsQ0FBQyxDQUNMLENBQUM7U0FDTDtLQUNKO0lBQ0QsSUFBSSxVQUFVLElBQUksUUFBUSxFQUFFO1FBQ3hCLE1BQU0sSUFBSSxLQUFLLENBQUMsd0NBQXdDLENBQUMsQ0FBQztLQUM3RDtTQUFNLElBQUksUUFBUSxLQUFLLFFBQVEsSUFBSSxRQUFRLEVBQUU7UUFDMUMsTUFBTSxJQUFJLEtBQUssQ0FBQywyQ0FBMkMsQ0FBQyxDQUFDO0tBQ2hFO1NBQU0sSUFBSSxRQUFRLEVBQUU7UUFDakIsT0FBTyxJQUFJLFFBQUcsQ0FBQyxpQkFBaUIsQ0FBQztZQUM3QixJQUFJLEVBQUUsSUFBSTtTQUNiLENBQUMsQ0FBQztLQUNOO0lBQ0QsT0FBTyxJQUFJLFFBQUcsQ0FBQyxtQkFBbUIsQ0FBQztRQUMvQixJQUFJLEVBQUUsSUFBSTtRQUNWLE1BQU0sRUFBRSxNQUFNO1FBQ2QsU0FBUyxFQUFFLFNBQVM7UUFDcEIsU0FBUyxFQUFFLFNBQVM7S0FDdkIsQ0FBQyxDQUFDO0FBQ1AsQ0FBQztBQW5GRCw0Q0FtRkMifQ==

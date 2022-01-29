@@ -1,0 +1,71 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.MTProtoPlainSender = void 0;
+/**
+ *  This module contains the class used to communicate with Telegram's servers
+ *  in plain text, when no authorization key has been created yet.
+ */
+const MTProtoState_1 = require("./MTProtoState");
+const Helpers_1 = require("../Helpers");
+const errors_1 = require("../errors");
+const extensions_1 = require("../extensions");
+/**
+ * MTProto Mobile Protocol plain sender (https://core.telegram.org/mtproto/description#unencrypted-messages)
+ */
+class MTProtoPlainSender {
+    /**
+     * Initializes the MTProto plain sender.
+     * @param connection connection: the Connection to be used.
+     * @param loggers
+     */
+    constructor(connection, loggers) {
+        this._state = new MTProtoState_1.MTProtoState(undefined, loggers);
+        this._connection = connection;
+    }
+    /**
+     * Sends and receives the result for the given request.
+     * @param request
+     */
+    async send(request) {
+        let body = request.getBytes();
+        let msgId = this._state._getNewMsgId();
+        const m = Helpers_1.toSignedLittleBuffer(msgId, 8);
+        const b = Buffer.alloc(4);
+        b.writeInt32LE(body.length, 0);
+        const res = Buffer.concat([
+            Buffer.concat([Buffer.alloc(8), m, b]),
+            body,
+        ]);
+        await this._connection.send(res);
+        body = await this._connection.recv();
+        if (body.length < 8) {
+            throw new errors_1.InvalidBufferError(body);
+        }
+        const reader = new extensions_1.BinaryReader(body);
+        const authKeyId = reader.readLong();
+        if (authKeyId.neq(BigInt(0))) {
+            throw new Error("Bad authKeyId");
+        }
+        msgId = reader.readLong();
+        if (msgId.eq(BigInt(0))) {
+            throw new Error("Bad msgId");
+        }
+        /** ^ We should make sure that the read ``msg_id`` is greater
+         * than our own ``msg_id``. However, under some circumstances
+         * (bad system clock/working behind proxies) this seems to not
+         * be the case, which would cause endless assertion errors.
+         */
+        const length = reader.readInt();
+        if (length <= 0) {
+            throw new Error("Bad length");
+        }
+        /**
+         * We could read length bytes and use those in a new reader to read
+         * the next TLObject without including the padding, but since the
+         * reader isn't used for anything else after this, it's unnecessary.
+         */
+        return reader.tgReadObject();
+    }
+}
+exports.MTProtoPlainSender = MTProtoPlainSender;
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiTVRQcm90b1BsYWluU2VuZGVyLmpzIiwic291cmNlUm9vdCI6IiIsInNvdXJjZXMiOlsiLi4vLi4vZ3JhbWpzL25ldHdvcmsvTVRQcm90b1BsYWluU2VuZGVyLnRzIl0sIm5hbWVzIjpbXSwibWFwcGluZ3MiOiI7OztBQUFBOzs7R0FHRztBQUNILGlEQUE4QztBQUU5Qyx3Q0FBa0Q7QUFDbEQsc0NBQStDO0FBQy9DLDhDQUE2QztBQUc3Qzs7R0FFRztBQUVILE1BQWEsa0JBQWtCO0lBSTNCOzs7O09BSUc7SUFDSCxZQUFZLFVBQWUsRUFBRSxPQUFZO1FBQ3JDLElBQUksQ0FBQyxNQUFNLEdBQUcsSUFBSSwyQkFBWSxDQUFDLFNBQVMsRUFBRSxPQUFPLENBQUMsQ0FBQztRQUNuRCxJQUFJLENBQUMsV0FBVyxHQUFHLFVBQVUsQ0FBQztJQUNsQyxDQUFDO0lBRUQ7OztPQUdHO0lBQ0gsS0FBSyxDQUFDLElBQUksQ0FBQyxPQUF1QjtRQUM5QixJQUFJLElBQUksR0FBRyxPQUFPLENBQUMsUUFBUSxFQUFFLENBQUM7UUFFOUIsSUFBSSxLQUFLLEdBQUcsSUFBSSxDQUFDLE1BQU0sQ0FBQyxZQUFZLEVBQUUsQ0FBQztRQUN2QyxNQUFNLENBQUMsR0FBRyw4QkFBb0IsQ0FBQyxLQUFLLEVBQUUsQ0FBQyxDQUFDLENBQUM7UUFDekMsTUFBTSxDQUFDLEdBQUcsTUFBTSxDQUFDLEtBQUssQ0FBQyxDQUFDLENBQUMsQ0FBQztRQUMxQixDQUFDLENBQUMsWUFBWSxDQUFDLElBQUksQ0FBQyxNQUFNLEVBQUUsQ0FBQyxDQUFDLENBQUM7UUFFL0IsTUFBTSxHQUFHLEdBQUcsTUFBTSxDQUFDLE1BQU0sQ0FBQztZQUN0QixNQUFNLENBQUMsTUFBTSxDQUFDLENBQUMsTUFBTSxDQUFDLEtBQUssQ0FBQyxDQUFDLENBQUMsRUFBRSxDQUFDLEVBQUUsQ0FBQyxDQUFDLENBQUM7WUFDdEMsSUFBSTtTQUNQLENBQUMsQ0FBQztRQUNILE1BQU0sSUFBSSxDQUFDLFdBQVcsQ0FBQyxJQUFJLENBQUMsR0FBRyxDQUFDLENBQUM7UUFDakMsSUFBSSxHQUFHLE1BQU0sSUFBSSxDQUFDLFdBQVcsQ0FBQyxJQUFJLEVBQUUsQ0FBQztRQUNyQyxJQUFJLElBQUksQ0FBQyxNQUFNLEdBQUcsQ0FBQyxFQUFFO1lBQ2pCLE1BQU0sSUFBSSwyQkFBa0IsQ0FBQyxJQUFJLENBQUMsQ0FBQztTQUN0QztRQUNELE1BQU0sTUFBTSxHQUFHLElBQUkseUJBQVksQ0FBQyxJQUFJLENBQUMsQ0FBQztRQUN0QyxNQUFNLFNBQVMsR0FBRyxNQUFNLENBQUMsUUFBUSxFQUFFLENBQUM7UUFDcEMsSUFBSSxTQUFTLENBQUMsR0FBRyxDQUFDLE1BQU0sQ0FBQyxDQUFDLENBQUMsQ0FBQyxFQUFFO1lBQzFCLE1BQU0sSUFBSSxLQUFLLENBQUMsZUFBZSxDQUFDLENBQUM7U0FDcEM7UUFDRCxLQUFLLEdBQUcsTUFBTSxDQUFDLFFBQVEsRUFBRSxDQUFDO1FBQzFCLElBQUksS0FBSyxDQUFDLEVBQUUsQ0FBQyxNQUFNLENBQUMsQ0FBQyxDQUFDLENBQUMsRUFBRTtZQUNyQixNQUFNLElBQUksS0FBSyxDQUFDLFdBQVcsQ0FBQyxDQUFDO1NBQ2hDO1FBQ0Q7Ozs7V0FJRztRQUVILE1BQU0sTUFBTSxHQUFHLE1BQU0sQ0FBQyxPQUFPLEVBQUUsQ0FBQztRQUNoQyxJQUFJLE1BQU0sSUFBSSxDQUFDLEVBQUU7WUFDYixNQUFNLElBQUksS0FBSyxDQUFDLFlBQVksQ0FBQyxDQUFDO1NBQ2pDO1FBQ0Q7Ozs7V0FJRztRQUNILE9BQU8sTUFBTSxDQUFDLFlBQVksRUFBRSxDQUFDO0lBQ2pDLENBQUM7Q0FDSjtBQTdERCxnREE2REMifQ==

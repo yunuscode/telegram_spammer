@@ -1,0 +1,123 @@
+"use strict";
+/**
+ * Errors not related to the Telegram API itself
+ */
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.BadMessageError = exports.CdnFileTamperedError = exports.SecurityError = exports.InvalidBufferError = exports.InvalidChecksumError = exports.TypeNotFoundError = exports.ReadCancelledError = void 0;
+/**
+ * Occurs when a read operation was cancelled.
+ */
+class ReadCancelledError extends Error {
+    constructor() {
+        super("The read operation was cancelled.");
+    }
+}
+exports.ReadCancelledError = ReadCancelledError;
+/**
+ * Occurs when a type is not found, for example,
+ * when trying to read a TLObject with an invalid constructor code.
+ */
+class TypeNotFoundError extends Error {
+    constructor(invalidConstructorId, remaining) {
+        super(`Could not find a matching Constructor ID for the TLObject that was supposed to be
+        read with ID ${invalidConstructorId}. Most likely, a TLObject was trying to be read when
+         it should not be read. Remaining bytes: ${remaining.length}`);
+        if (typeof alert !== "undefined") {
+            alert(`Missing MTProto Entity: Please, make sure to add TL definition for ID ${invalidConstructorId}`);
+        }
+        this.invalidConstructorId = invalidConstructorId;
+        this.remaining = remaining;
+    }
+}
+exports.TypeNotFoundError = TypeNotFoundError;
+/**
+ * Occurs when using the TCP full mode and the checksum of a received
+ * packet doesn't match the expected checksum.
+ */
+class InvalidChecksumError extends Error {
+    constructor(checksum, validChecksum) {
+        super(`Invalid checksum (${checksum} when ${validChecksum} was expected). This packet should be skipped.`);
+        this.checksum = checksum;
+        this.validChecksum = validChecksum;
+    }
+}
+exports.InvalidChecksumError = InvalidChecksumError;
+/**
+ * Occurs when the buffer is invalid, and may contain an HTTP error code.
+ * For instance, 404 means "forgotten/broken authorization key", while
+ */
+class InvalidBufferError extends Error {
+    constructor(payload) {
+        let code = undefined;
+        if (payload.length === 4) {
+            code = -payload.readInt32LE(0);
+            super(`Invalid response buffer (HTTP code ${code})`);
+        }
+        else {
+            super(`Invalid response buffer (too short ${payload})`);
+        }
+        this.code = code;
+        this.payload = payload;
+    }
+}
+exports.InvalidBufferError = InvalidBufferError;
+/**
+ * Generic security error, mostly used when generating a new AuthKey.
+ */
+class SecurityError extends Error {
+    constructor(...args) {
+        if (!args.length) {
+            args = ["A security check failed."];
+        }
+        super(...args);
+    }
+}
+exports.SecurityError = SecurityError;
+/**
+ * Occurs when there's a hash mismatch between the decrypted CDN file
+ * and its expected hash.
+ */
+class CdnFileTamperedError extends SecurityError {
+    constructor() {
+        super("The CDN file has been altered and its download cancelled.");
+    }
+}
+exports.CdnFileTamperedError = CdnFileTamperedError;
+/**
+ * Occurs when handling a badMessageNotification
+ */
+class BadMessageError extends Error {
+    constructor(request, code) {
+        let errorMessage = BadMessageError.ErrorMessages[code] ||
+            `Unknown error code (this should not happen): ${code}.`;
+        errorMessage += `  Caused by ${request.className}`;
+        super(errorMessage);
+        this.errorMessage = errorMessage;
+        this.code = code;
+    }
+}
+exports.BadMessageError = BadMessageError;
+BadMessageError.ErrorMessages = {
+    16: "msg_id too low (most likely, client time is wrong it would be worthwhile to " +
+        "synchronize it using msg_id notifications and re-send the original message " +
+        "with the “correct” msg_id or wrap it in a container with a new msg_id if the " +
+        "original message had waited too long on the client to be transmitted).",
+    17: "msg_id too high (similar to the previous case, the client time has to be " +
+        "synchronized, and the message re-sent with the correct msg_id).",
+    18: "Incorrect two lower order msg_id bits (the server expects client message msg_id " +
+        "to be divisible by 4).",
+    19: "Container msg_id is the same as msg_id of a previously received message " +
+        "(this must never happen).",
+    20: "Message too old, and it cannot be verified whether the server has received a " +
+        "message with this msg_id or not.",
+    32: "msg_seqno too low (the server has already received a message with a lower " +
+        "msg_id but with either a higher or an equal and odd seqno).",
+    33: "msg_seqno too high (similarly, there is a message with a higher msg_id but with " +
+        "either a lower or an equal and odd seqno).",
+    34: "An even msg_seqno expected (irrelevant message), but odd received.",
+    35: "Odd msg_seqno expected (relevant message), but even received.",
+    48: "Incorrect server salt (in this case, the bad_server_salt response is received with " +
+        "the correct salt, and the message is to be re-sent with it).",
+    64: "Invalid container.",
+};
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiQ29tbW9uLmpzIiwic291cmNlUm9vdCI6IiIsInNvdXJjZXMiOlsiLi4vLi4vZ3JhbWpzL2Vycm9ycy9Db21tb24udHMiXSwibmFtZXMiOltdLCJtYXBwaW5ncyI6IjtBQUFBOztHQUVHOzs7QUFJSDs7R0FFRztBQUNILE1BQWEsa0JBQW1CLFNBQVEsS0FBSztJQUN6QztRQUNJLEtBQUssQ0FBQyxtQ0FBbUMsQ0FBQyxDQUFDO0lBQy9DLENBQUM7Q0FDSjtBQUpELGdEQUlDO0FBRUQ7OztHQUdHO0FBQ0gsTUFBYSxpQkFBa0IsU0FBUSxLQUFLO0lBSXhDLFlBQVksb0JBQTRCLEVBQUUsU0FBaUI7UUFDdkQsS0FBSyxDQUFDO3VCQUNTLG9CQUFvQjttREFDUSxTQUFTLENBQUMsTUFBTSxFQUFFLENBQUMsQ0FBQztRQUMvRCxJQUFJLE9BQU8sS0FBSyxLQUFLLFdBQVcsRUFBRTtZQUM5QixLQUFLLENBQ0QseUVBQXlFLG9CQUFvQixFQUFFLENBQ2xHLENBQUM7U0FDTDtRQUNELElBQUksQ0FBQyxvQkFBb0IsR0FBRyxvQkFBb0IsQ0FBQztRQUNqRCxJQUFJLENBQUMsU0FBUyxHQUFHLFNBQVMsQ0FBQztJQUMvQixDQUFDO0NBQ0o7QUFoQkQsOENBZ0JDO0FBRUQ7OztHQUdHO0FBQ0gsTUFBYSxvQkFBcUIsU0FBUSxLQUFLO0lBSTNDLFlBQVksUUFBZ0IsRUFBRSxhQUFxQjtRQUMvQyxLQUFLLENBQ0QscUJBQXFCLFFBQVEsU0FBUyxhQUFhLGdEQUFnRCxDQUN0RyxDQUFDO1FBQ0YsSUFBSSxDQUFDLFFBQVEsR0FBRyxRQUFRLENBQUM7UUFDekIsSUFBSSxDQUFDLGFBQWEsR0FBRyxhQUFhLENBQUM7SUFDdkMsQ0FBQztDQUNKO0FBWEQsb0RBV0M7QUFFRDs7O0dBR0c7QUFDSCxNQUFhLGtCQUFtQixTQUFRLEtBQUs7SUFJekMsWUFBWSxPQUFlO1FBQ3ZCLElBQUksSUFBSSxHQUFHLFNBQVMsQ0FBQztRQUNyQixJQUFJLE9BQU8sQ0FBQyxNQUFNLEtBQUssQ0FBQyxFQUFFO1lBQ3RCLElBQUksR0FBRyxDQUFDLE9BQU8sQ0FBQyxXQUFXLENBQUMsQ0FBQyxDQUFDLENBQUM7WUFDL0IsS0FBSyxDQUFDLHNDQUFzQyxJQUFJLEdBQUcsQ0FBQyxDQUFDO1NBQ3hEO2FBQU07WUFDSCxLQUFLLENBQUMsc0NBQXNDLE9BQU8sR0FBRyxDQUFDLENBQUM7U0FDM0Q7UUFDRCxJQUFJLENBQUMsSUFBSSxHQUFHLElBQUksQ0FBQztRQUNqQixJQUFJLENBQUMsT0FBTyxHQUFHLE9BQU8sQ0FBQztJQUMzQixDQUFDO0NBQ0o7QUFmRCxnREFlQztBQUVEOztHQUVHO0FBQ0gsTUFBYSxhQUFjLFNBQVEsS0FBSztJQUNwQyxZQUFZLEdBQUcsSUFBVztRQUN0QixJQUFJLENBQUMsSUFBSSxDQUFDLE1BQU0sRUFBRTtZQUNkLElBQUksR0FBRyxDQUFDLDBCQUEwQixDQUFDLENBQUM7U0FDdkM7UUFDRCxLQUFLLENBQUMsR0FBRyxJQUFJLENBQUMsQ0FBQztJQUNuQixDQUFDO0NBQ0o7QUFQRCxzQ0FPQztBQUVEOzs7R0FHRztBQUNILE1BQWEsb0JBQXFCLFNBQVEsYUFBYTtJQUNuRDtRQUNJLEtBQUssQ0FBQywyREFBMkQsQ0FBQyxDQUFDO0lBQ3ZFLENBQUM7Q0FDSjtBQUpELG9EQUlDO0FBRUQ7O0dBRUc7QUFDSCxNQUFhLGVBQWdCLFNBQVEsS0FBSztJQTZDdEMsWUFBWSxPQUF1QixFQUFFLElBQVk7UUFDN0MsSUFBSSxZQUFZLEdBQ1gsZUFBZSxDQUFDLGFBQXFCLENBQUMsSUFBSSxDQUFDO1lBQzVDLGdEQUFnRCxJQUFJLEdBQUcsQ0FBQztRQUM1RCxZQUFZLElBQUksZUFBZSxPQUFPLENBQUMsU0FBUyxFQUFFLENBQUM7UUFDbkQsS0FBSyxDQUFDLFlBQVksQ0FBQyxDQUFDO1FBQ3BCLElBQUksQ0FBQyxZQUFZLEdBQUcsWUFBWSxDQUFDO1FBQ2pDLElBQUksQ0FBQyxJQUFJLEdBQUcsSUFBSSxDQUFDO0lBQ3JCLENBQUM7O0FBckRMLDBDQXNEQztBQXJEVSw2QkFBYSxHQUFHO0lBQ25CLEVBQUUsRUFDRSw4RUFBOEU7UUFDOUUsNkVBQTZFO1FBQzdFLCtFQUErRTtRQUMvRSx3RUFBd0U7SUFFNUUsRUFBRSxFQUNFLDJFQUEyRTtRQUMzRSxpRUFBaUU7SUFFckUsRUFBRSxFQUNFLGtGQUFrRjtRQUNsRix3QkFBd0I7SUFFNUIsRUFBRSxFQUNFLDBFQUEwRTtRQUMxRSwyQkFBMkI7SUFFL0IsRUFBRSxFQUNFLCtFQUErRTtRQUMvRSxrQ0FBa0M7SUFFdEMsRUFBRSxFQUNFLDRFQUE0RTtRQUM1RSw2REFBNkQ7SUFFakUsRUFBRSxFQUNFLGtGQUFrRjtRQUNsRiw0Q0FBNEM7SUFFaEQsRUFBRSxFQUFFLG9FQUFvRTtJQUV4RSxFQUFFLEVBQUUsK0RBQStEO0lBRW5FLEVBQUUsRUFDRSxxRkFBcUY7UUFDckYsOERBQThEO0lBRWxFLEVBQUUsRUFBRSxvQkFBb0I7Q0FDM0IsQ0FBQyJ9

@@ -1,0 +1,79 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ConnectionTCPObfuscated = void 0;
+const Helpers_1 = require("../../Helpers");
+const Connection_1 = require("./Connection");
+const TCPAbridged_1 = require("./TCPAbridged");
+const CTR_1 = require("../../crypto/CTR");
+class ObfuscatedIO {
+    constructor(connection) {
+        this.header = undefined;
+        this.connection = connection.socket;
+        this._packetClass = connection.PacketCodecClass;
+    }
+    async initHeader() {
+        // Obfuscated messages secrets cannot start with any of these
+        const keywords = [
+            Buffer.from("50567247", "hex"),
+            Buffer.from("474554", "hex"),
+            Buffer.from("504f5354", "hex"),
+            Buffer.from("eeeeeeee", "hex"),
+        ];
+        let random;
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+            random = Helpers_1.generateRandomBytes(64);
+            if (random[0] !== 0xef &&
+                !random.slice(4, 8).equals(Buffer.alloc(4))) {
+                let ok = true;
+                for (const key of keywords) {
+                    if (key.equals(random.slice(0, 4))) {
+                        ok = false;
+                        break;
+                    }
+                }
+                if (ok) {
+                    break;
+                }
+            }
+        }
+        random = random.toJSON().data;
+        const randomReversed = Buffer.from(random.slice(8, 56)).reverse();
+        // Encryption has "continuous buffer" enabled
+        const encryptKey = Buffer.from(random.slice(8, 40));
+        const encryptIv = Buffer.from(random.slice(40, 56));
+        const decryptKey = Buffer.from(randomReversed.slice(0, 32));
+        const decryptIv = Buffer.from(randomReversed.slice(32, 48));
+        const encryptor = new CTR_1.CTR(encryptKey, encryptIv);
+        const decryptor = new CTR_1.CTR(decryptKey, decryptIv);
+        random = Buffer.concat([
+            Buffer.from(random.slice(0, 56)),
+            this._packetClass.obfuscateTag,
+            Buffer.from(random.slice(60)),
+        ]);
+        random = Buffer.concat([
+            Buffer.from(random.slice(0, 56)),
+            Buffer.from(encryptor.encrypt(random).slice(56, 64)),
+            Buffer.from(random.slice(64)),
+        ]);
+        this.header = random;
+        this._encrypt = encryptor;
+        this._decrypt = decryptor;
+    }
+    async read(n) {
+        const data = await this.connection.readExactly(n);
+        return this._decrypt.encrypt(data);
+    }
+    write(data) {
+        this.connection.write(this._encrypt.encrypt(data));
+    }
+}
+class ConnectionTCPObfuscated extends Connection_1.ObfuscatedConnection {
+    constructor() {
+        super(...arguments);
+        this.ObfuscatedIO = ObfuscatedIO;
+        this.PacketCodecClass = TCPAbridged_1.AbridgedPacketCodec;
+    }
+}
+exports.ConnectionTCPObfuscated = ConnectionTCPObfuscated;
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiVENQT2JmdXNjYXRlZC5qcyIsInNvdXJjZVJvb3QiOiIiLCJzb3VyY2VzIjpbIi4uLy4uLy4uL2dyYW1qcy9uZXR3b3JrL2Nvbm5lY3Rpb24vVENQT2JmdXNjYXRlZC50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOzs7QUFBQSwyQ0FBb0Q7QUFDcEQsNkNBQW9EO0FBQ3BELCtDQUFvRDtBQUNwRCwwQ0FBdUM7QUFHdkMsTUFBTSxZQUFZO0lBTWQsWUFBWSxVQUFtQztRQUwvQyxXQUFNLEdBQVksU0FBUyxDQUFDO1FBTXhCLElBQUksQ0FBQyxVQUFVLEdBQUcsVUFBVSxDQUFDLE1BQU0sQ0FBQztRQUNwQyxJQUFJLENBQUMsWUFBWSxHQUFHLFVBQVUsQ0FBQyxnQkFBZ0IsQ0FBQztJQUNwRCxDQUFDO0lBRUQsS0FBSyxDQUFDLFVBQVU7UUFDWiw2REFBNkQ7UUFDN0QsTUFBTSxRQUFRLEdBQUc7WUFDYixNQUFNLENBQUMsSUFBSSxDQUFDLFVBQVUsRUFBRSxLQUFLLENBQUM7WUFDOUIsTUFBTSxDQUFDLElBQUksQ0FBQyxRQUFRLEVBQUUsS0FBSyxDQUFDO1lBQzVCLE1BQU0sQ0FBQyxJQUFJLENBQUMsVUFBVSxFQUFFLEtBQUssQ0FBQztZQUM5QixNQUFNLENBQUMsSUFBSSxDQUFDLFVBQVUsRUFBRSxLQUFLLENBQUM7U0FDakMsQ0FBQztRQUNGLElBQUksTUFBTSxDQUFDO1FBRVgsaURBQWlEO1FBQ2pELE9BQU8sSUFBSSxFQUFFO1lBQ1QsTUFBTSxHQUFHLDZCQUFtQixDQUFDLEVBQUUsQ0FBQyxDQUFDO1lBQ2pDLElBQ0ksTUFBTSxDQUFDLENBQUMsQ0FBQyxLQUFLLElBQUk7Z0JBQ2xCLENBQUMsTUFBTSxDQUFDLEtBQUssQ0FBQyxDQUFDLEVBQUUsQ0FBQyxDQUFDLENBQUMsTUFBTSxDQUFDLE1BQU0sQ0FBQyxLQUFLLENBQUMsQ0FBQyxDQUFDLENBQUMsRUFDN0M7Z0JBQ0UsSUFBSSxFQUFFLEdBQUcsSUFBSSxDQUFDO2dCQUNkLEtBQUssTUFBTSxH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

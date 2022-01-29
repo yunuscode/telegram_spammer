@@ -1,0 +1,35 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.IGE = void 0;
+const Helpers = require("../Helpers");
+const { IGE: aes_ige } = require("@cryptography/aes");
+class IGENEW {
+    constructor(key, iv) {
+        this.ige = new aes_ige(key, iv);
+    }
+    /**
+     * Decrypts the given text in 16-bytes blocks by using the given key and 32-bytes initialization vector
+     * @param cipherText {Buffer}
+     * @returns {Buffer}
+     */
+    decryptIge(cipherText) {
+        return Helpers.convertToLittle(this.ige.decrypt(cipherText));
+    }
+    /**
+     * Encrypts the given text in 16-bytes blocks by using the given key and 32-bytes initialization vector
+     * @param plainText {Buffer}
+     * @returns {Buffer}
+     */
+    encryptIge(plainText) {
+        const padding = plainText.length % 16;
+        if (padding) {
+            plainText = Buffer.concat([
+                plainText,
+                Helpers.generateRandomBytes(16 - padding),
+            ]);
+        }
+        return Helpers.convertToLittle(this.ige.encrypt(plainText));
+    }
+}
+exports.IGE = IGENEW;
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiSUdFLmpzIiwic291cmNlUm9vdCI6IiIsInNvdXJjZXMiOlsiLi4vLi4vZ3JhbWpzL2NyeXB0by9JR0UudHMiXSwibmFtZXMiOltdLCJtYXBwaW5ncyI6Ijs7O0FBQUEsTUFBTSxPQUFPLEdBQUcsT0FBTyxDQUFDLFlBQVksQ0FBQyxDQUFDO0FBRXRDLE1BQU0sRUFBRSxHQUFHLEVBQUUsT0FBTyxFQUFFLEdBQUcsT0FBTyxDQUFDLG1CQUFtQixDQUFDLENBQUM7QUFFdEQsTUFBTSxNQUFNO0lBR1IsWUFBWSxHQUFXLEVBQUUsRUFBVTtRQUMvQixJQUFJLENBQUMsR0FBRyxHQUFHLElBQUksT0FBTyxDQUFDLEdBQUcsRUFBRSxFQUFFLENBQUMsQ0FBQztJQUNwQyxDQUFDO0lBRUQ7Ozs7T0FJRztJQUNILFVBQVUsQ0FBQyxVQUFrQjtRQUN6QixPQUFPLE9BQU8sQ0FBQyxlQUFlLENBQUMsSUFBSSxDQUFDLEdBQUcsQ0FBQyxPQUFPLENBQUMsVUFBVSxDQUFDLENBQUMsQ0FBQztJQUNqRSxDQUFDO0lBRUQ7Ozs7T0FJRztJQUNILFVBQVUsQ0FBQyxTQUFpQjtRQUN4QixNQUFNLE9BQU8sR0FBRyxTQUFTLENBQUMsTUFBTSxHQUFHLEVBQUUsQ0FBQztRQUN0QyxJQUFJLE9BQU8sRUFBRTtZQUNULFNBQVMsR0FBRyxNQUFNLENBQUMsTUFBTSxDQUFDO2dCQUN0QixTQUFTO2dCQUNULE9BQU8sQ0FBQyxtQkFBbUIsQ0FBQyxFQUFFLEdBQUcsT0FBTyxDQUFDO2FBQzVDLENBQUMsQ0FBQztTQUNOO1FBRUQsT0FBTyxPQUFPLENBQUMsZUFBZSxDQUFDLElBQUksQ0FBQyxHQUFHLENBQUMsT0FBTyxDQUFDLFNBQVMsQ0FBQyxDQUFDLENBQUM7SUFDaEUsQ0FBQztDQUNKO0FBRWtCLHFCQUFHIn0=

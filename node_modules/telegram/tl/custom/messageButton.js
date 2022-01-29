@@ -1,0 +1,121 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.MessageButton = void 0;
+const api_1 = require("../api");
+const button_1 = require("./button");
+const util_1 = require("util");
+const Helpers_1 = require("../../Helpers");
+class MessageButton {
+    constructor(client, original, chat, bot, msgId) {
+        this.button = original;
+        this._bot = bot;
+        this._chat = chat;
+        this._msgId = msgId;
+        this._client = client;
+    }
+    [util_1.inspect.custom]() {
+        return Helpers_1.betterConsoleLog(this);
+    }
+    get client() {
+        return this._client;
+    }
+    get text() {
+        return !(this.button instanceof button_1.Button) ? this.button.text : "";
+    }
+    get data() {
+        if (this.button instanceof api_1.Api.KeyboardButtonCallback) {
+            return this.button.data;
+        }
+    }
+    get inlineQuery() {
+        if (this.button instanceof api_1.Api.KeyboardButtonSwitchInline) {
+            return this.button.query;
+        }
+    }
+    get url() {
+        if (this.button instanceof api_1.Api.KeyboardButtonUrl) {
+            return this.button.url;
+        }
+    }
+    async click({ sharePhone = false, shareGeo = [0, 0] }) {
+        if (this.button instanceof api_1.Api.KeyboardButton) {
+            return this._client.sendMessage(this._chat, {
+                message: this.button.text,
+                parseMode: undefined,
+            });
+        }
+        else if (this.button instanceof api_1.Api.KeyboardButtonCallback) {
+            const request = new api_1.Api.messages.GetBotCallbackAnswer({
+                peer: this._chat,
+                msgId: this._msgId,
+                data: this.button.data,
+            });
+            try {
+                return await this._client.invoke(request);
+            }
+            catch (e) {
+                if (e.errorMessage == "BOT_RESPONSE_TIMEOUT") {
+                    return null;
+                }
+                throw e;
+            }
+        }
+        else if (this.button instanceof api_1.Api.KeyboardButtonSwitchInline) {
+            return this._client.invoke(new api_1.Api.messages.StartBot({
+                bot: this._bot,
+                peer: this._chat,
+                startParam: this.button.query,
+            }));
+        }
+        else if (this.button instanceof api_1.Api.KeyboardButtonUrl) {
+            return this.button.url;
+        }
+        else if (this.button instanceof api_1.Api.KeyboardButtonGame) {
+            const request = new api_1.Api.messages.GetBotCallbackAnswer({
+                peer: this._chat,
+                msgId: this._msgId,
+                game: true,
+            });
+            try {
+                return await this._client.invoke(request);
+            }
+            catch (e) {
+                if (e.errorMessage == "BOT_RESPONSE_TIMEOUT") {
+                    return null;
+                }
+                throw e;
+            }
+        }
+        else if (this.button instanceof api_1.Api.KeyboardButtonRequestPhone) {
+            if (!sharePhone) {
+                throw new Error("cannot click on phone buttons unless sharePhone=true");
+            }
+            const me = (await this._client.getMe());
+            const phoneMedia = new api_1.Api.InputMediaContact({
+                phoneNumber: me.phone || "",
+                firstName: me.firstName || "",
+                lastName: me.lastName || "",
+                vcard: "",
+            });
+            throw new Error("Not supported for now");
+            // TODO
+            //return this._client.sendFile(this._chat, phoneMedia);
+        }
+        else if (this.button instanceof api_1.Api.InputWebFileGeoPointLocation) {
+            if (!shareGeo) {
+                throw new Error("cannot click on geo buttons unless shareGeo=[longitude, latitude]");
+            }
+            let geoMedia = new api_1.Api.InputMediaGeoPoint({
+                geoPoint: new api_1.Api.InputGeoPoint({
+                    lat: shareGeo[0],
+                    long: shareGeo[1],
+                }),
+            });
+            throw new Error("Not supported for now");
+            // TODO
+            //return this._client.sendFile(this._chat, geoMedia);
+        }
+    }
+}
+exports.MessageButton = MessageButton;
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoibWVzc2FnZUJ1dHRvbi5qcyIsInNvdXJjZVJvb3QiOiIiLCJzb3VyY2VzIjpbIi4uLy4uLy4uL2dyYW1qcy90bC9jdXN0b20vbWVzc2FnZUJ1dHRvbi50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOzs7QUFFQSxnQ0FBNkI7QUFDN0IscUNBQWtDO0FBQ2xDLCtCQUErQjtBQUMvQiwyQ0FBaUQ7QUFFakQsTUFBYSxhQUFhO0lBVXRCLFlBQ0ksTUFBc0IsRUFDdEIsUUFBb0IsRUFDcEIsSUFBZ0IsRUFDaEIsR0FBZSxFQUNmLEtBQW9CO1FBRXBCLElBQUksQ0FBQyxNQUFNLEdBQUcsUUFBUSxDQUFDO1FBQ3ZCLElBQUksQ0FBQyxJQUFJLEdBQUcsR0FBRyxDQUFDO1FBQ2hCLElBQUksQ0FBQyxLQUFLLEdBQUcsSUFBSSxDQUFDO1FBQ2xCLElBQUksQ0FBQyxNQUFNLEdBQUcsS0FBSyxDQUFDO1FBQ3BCLElBQUksQ0FBQyxPQUFPLEdBQUcsTUFBTSxDQUFDO0lBQzFCLENBQUM7SUFoQkQsQ0FBQyxjQUFPLENBQUMsTUFBTSxDQUFDO1FBQ1osT0FBTywwQkFBZ0IsQ0FBQyxJQUFJLENBQUMsQ0FBQztJQUNsQyxDQUFDO0lBZ0JELElBQUksTUFBTTtRQUNOLE9BQU8sSUFBSSxDQUFDLE9BQU8sQ0FBQztJQUN4QixDQUFDO0lBRUQsSUFBSSxJQUFJO1FBQ0osT0FBTyxDQUFDLENBQUMsSUFBSSxDQUFDLE1BQU0sWUFBWSxlQUFNLENBQUMsQ0FBQyxDQUFDLENBQUMsSUFBSSxDQUFDLE1BQU0sQ0FBQyxJQUFJLENBQUMsQ0FBQyxDQUFDLEVBQUUsQ0FBQztJQUNwRSxDQUFDO0lBRUQsSUFBSSxJQUFJO1FBQ0osSUFBSSxJQUFJLENBQUMsTUFBTSxZQUFZLFNBQUcsQ0FBQyxzQkFBc0IsRUFBRTtZQUNuRCxPQUFPLElBQUksQ0FBQyxNQUFNLENBQUMsSUFBSSxDQUFDO1NBQzNCO0lBQ0wsQ0FBQztJQUVELElBQUksV0FBVztRQUNYLElBQUksSUFBSSxDQUFDLE1BQU0s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

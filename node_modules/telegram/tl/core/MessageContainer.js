@@ -1,0 +1,43 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.MessageContainer = void 0;
+const TLMessage_1 = require("./TLMessage");
+class MessageContainer {
+    constructor(messages) {
+        this.CONSTRUCTOR_ID = 0x73f1f8dc;
+        this.messages = messages;
+        this.classType = "constructor";
+    }
+    static async fromReader(reader) {
+        const messages = [];
+        const length = reader.readInt();
+        for (let x = 0; x < length; x++) {
+            const msgId = reader.readLong();
+            const seqNo = reader.readInt();
+            const length = reader.readInt();
+            const before = reader.tellPosition();
+            const obj = reader.tgReadObject();
+            reader.setPosition(before + length);
+            const tlMessage = new TLMessage_1.TLMessage(msgId, seqNo, obj);
+            messages.push(tlMessage);
+        }
+        return new MessageContainer(messages);
+    }
+}
+exports.MessageContainer = MessageContainer;
+MessageContainer.CONSTRUCTOR_ID = 0x73f1f8dc;
+MessageContainer.classType = "constructor";
+// Maximum size in bytes for the inner payload of the container.
+// Telegram will close the connection if the payload is bigger.
+// The overhead of the container itself is subtracted.
+MessageContainer.MAXIMUM_SIZE = 1044456 - 8;
+// Maximum amount of messages that can't be sent inside a single
+// container, inclusive. Beyond this limit Telegram will respond
+// with BAD_MESSAGE 64 (invalid container).
+//
+// This limit is not 100% accurate and may in some cases be higher.
+// However, sending up to 100 requests at once in a single container
+// is a reasonable conservative value, since it could also depend on
+// other factors like size per request, but we cannot know this.
+MessageContainer.MAXIMUM_LENGTH = 100;
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiTWVzc2FnZUNvbnRhaW5lci5qcyIsInNvdXJjZVJvb3QiOiIiLCJzb3VyY2VzIjpbIi4uLy4uLy4uL2dyYW1qcy90bC9jb3JlL01lc3NhZ2VDb250YWluZXIudHMiXSwibmFtZXMiOltdLCJtYXBwaW5ncyI6Ijs7O0FBQUEsMkNBQXdDO0FBR3hDLE1BQWEsZ0JBQWdCO0lBcUJ6QixZQUFZLFFBQWU7UUFDdkIsSUFBSSxDQUFDLGNBQWMsR0FBRyxVQUFVLENBQUM7UUFDakMsSUFBSSxDQUFDLFFBQVEsR0FBRyxRQUFRLENBQUM7UUFDekIsSUFBSSxDQUFDLFNBQVMsR0FBRyxhQUFhLENBQUM7SUFDbkMsQ0FBQztJQUVELE1BQU0sQ0FBQyxLQUFLLENBQUMsVUFBVSxDQUFDLE1BQW9CO1FBQ3hDLE1BQU0sUUFBUSxHQUFHLEVBQUUsQ0FBQztRQUNwQixNQUFNLE1BQU0sR0FBRyxNQUFNLENBQUMsT0FBTyxFQUFFLENBQUM7UUFDaEMsS0FBSyxJQUFJLENBQUMsR0FBRyxDQUFDLEVBQUUsQ0FBQyxHQUFHLE1BQU0sRUFBRSxDQUFDLEVBQUUsRUFBRTtZQUM3QixNQUFNLEtBQUssR0FBRyxNQUFNLENBQUMsUUFBUSxFQUFFLENBQUM7WUFDaEMsTUFBTSxLQUFLLEdBQUcsTUFBTSxDQUFDLE9BQU8sRUFBRSxDQUFDO1lBQy9CLE1BQU0sTUFBTSxHQUFHLE1BQU0sQ0FBQyxPQUFPLEVBQUUsQ0FBQztZQUNoQyxNQUFNLE1BQU0sR0FBRyxNQUFNLENBQUMsWUFBWSxFQUFFLENBQUM7WUFDckMsTUFBTSxHQUFHLEdBQUcsTUFBTSxDQUFDLFlBQVksRUFBRSxDQUFDO1lBQ2xDLE1BQU0sQ0FBQyxXQUFXLENBQUMsTUFBTSxHQUFHLE1BQU0sQ0FBQyxDQUFDO1lBQ3BDLE1BQU0sU0FBUyxHQUFHLElBQUkscUJBQVMsQ0FBQyxLQUFLLEVBQUUsS0FBSyxFQUFFLEdBQUcsQ0FBQyxDQUFDO1lBQ25ELFFBQVEsQ0FBQyxJQUFJLENBQUMsU0FBUyxDQUFDLENBQUM7U0FDNUI7UUFDRCxPQUFPLElBQUksZ0JBQWdCLENBQUMsUUFBUSxDQUFDLENBQUM7SUFDMUMsQ0FBQzs7QUF6Q0wsNENBMENDO0FBekNVLCtCQUFjLEdBQUcsVUFBVSxDQUFDO0FBQzVCLDBCQUFTLEdBQUcsYUFBYSxDQUFDO0FBQ2pDLGdFQUFnRTtBQUNoRSwrREFBK0Q7QUFDL0Qsc0RBQXNEO0FBQy9DLDZCQUFZLEdBQUcsT0FBTyxHQUFHLENBQUMsQ0FBQztBQUVsQyxnRUFBZ0U7QUFDaEUsZ0VBQWdFO0FBQ2hFLDJDQUEyQztBQUMzQyxFQUFFO0FBQ0YsbUVBQW1FO0FBQ25FLG9FQUFvRTtBQUNwRSxvRUFBb0U7QUFDcEUsZ0VBQWdFO0FBQ3pELCtCQUFjLEdBQUcsR0FBRyxDQUFDIn0=

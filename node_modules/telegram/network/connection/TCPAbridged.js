@@ -1,0 +1,59 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ConnectionTCPAbridged = exports.AbridgedPacketCodec = void 0;
+const Helpers_1 = require("../../Helpers");
+const Connection_1 = require("./Connection");
+const big_integer_1 = __importDefault(require("big-integer"));
+class AbridgedPacketCodec extends Connection_1.PacketCodec {
+    constructor(props) {
+        super(props);
+        this.tag = AbridgedPacketCodec.tag;
+        this.obfuscateTag = AbridgedPacketCodec.obfuscateTag;
+    }
+    encodePacket(data) {
+        let length = data.length >> 2;
+        let temp;
+        if (length < 127) {
+            const b = Buffer.alloc(1);
+            b.writeUInt8(length, 0);
+            temp = b;
+        }
+        else {
+            temp = Buffer.concat([
+                Buffer.from("7f", "hex"),
+                Helpers_1.readBufferFromBigInt(big_integer_1.default(length), 3),
+            ]);
+        }
+        return Buffer.concat([temp, data]);
+    }
+    async readPacket(reader) {
+        const readData = await reader.read(1);
+        let length = readData[0];
+        if (length >= 127) {
+            length = Buffer.concat([
+                await reader.read(3),
+                Buffer.alloc(1),
+            ]).readInt32LE(0);
+        }
+        return reader.read(length << 2);
+    }
+}
+exports.AbridgedPacketCodec = AbridgedPacketCodec;
+AbridgedPacketCodec.tag = Buffer.from("ef", "hex");
+AbridgedPacketCodec.obfuscateTag = Buffer.from("efefefef", "hex");
+/**
+ * This is the mode with the lowest overhead, as it will
+ * only require 1 byte if the packet length is less than
+ * 508 bytes (127 << 2, which is very common).
+ */
+class ConnectionTCPAbridged extends Connection_1.Connection {
+    constructor() {
+        super(...arguments);
+        this.PacketCodecClass = AbridgedPacketCodec;
+    }
+}
+exports.ConnectionTCPAbridged = ConnectionTCPAbridged;
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiVENQQWJyaWRnZWQuanMiLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyIuLi8uLi8uLi9ncmFtanMvbmV0d29yay9jb25uZWN0aW9uL1RDUEFicmlkZ2VkLnRzIl0sIm5hbWVzIjpbXSwibWFwcGluZ3MiOiI7Ozs7OztBQUFBLDJDQUFxRDtBQUNyRCw2Q0FBdUQ7QUFHdkQsOERBQWlDO0FBRWpDLE1BQWEsbUJBQW9CLFNBQVEsd0JBQVc7SUFNaEQsWUFBWSxLQUFVO1FBQ2xCLEtBQUssQ0FBQyxLQUFLLENBQUMsQ0FBQztRQUNiLElBQUksQ0FBQyxHQUFHLEdBQUcsbUJBQW1CLENBQUMsR0FBRyxDQUFDO1FBQ25DLElBQUksQ0FBQyxZQUFZLEdBQUcsbUJBQW1CLENBQUMsWUFBWSxDQUFDO0lBQ3pELENBQUM7SUFFRCxZQUFZLENBQUMsSUFBWTtRQUNyQixJQUFJLE1BQU0sR0FBRyxJQUFJLENBQUMsTUFBTSxJQUFJLENBQUMsQ0FBQztRQUM5QixJQUFJLElBQUksQ0FBQztRQUNULElBQUksTUFBTSxHQUFHLEdBQUcsRUFBRTtZQUNkLE1BQU0sQ0FBQyxHQUFHLE1BQU0sQ0FBQyxLQUFLLENBQUMsQ0FBQyxDQUFDLENBQUM7WUFDMUIsQ0FBQyxDQUFDLFVBQVUsQ0FBQyxNQUFNLEVBQUUsQ0FBQyxDQUFDLENBQUM7WUFDeEIsSUFBSSxHQUFHLENBQUMsQ0FBQztTQUNaO2FBQU07WUFDSCxJQUFJLEdBQUcsTUFBTSxDQUFDLE1BQU0sQ0FBQztnQkFDakIsTUFBTSxDQUFDLElBQUksQ0FBQyxJQUFJLEVBQUUsS0FBSyxDQUFDO2dCQUN4Qiw4QkFBb0IsQ0FBQyxxQkFBTSxDQUFDLE1BQU0sQ0FBQyxFQUFFLENBQUMsQ0FBQzthQUMxQyxDQUFDLENBQUM7U0FDTjtRQUNELE9BQU8sTUFBTSxDQUFDLE1BQU0sQ0FBQyxDQUFDLElBQUksRUFBRSxJQUFJLENBQUMsQ0FBQyxDQUFDO0lBQ3ZDLENBQUM7SUFFRCxLQUFLLENBQUMsVUFBVSxDQUNaLE1BQStDO1FBRS9DLE1BQU0sUUFBUSxHQUFHLE1BQU0sTUFBTSxDQUFDLElBQUksQ0FBQyxDQUFDLENBQUMsQ0FBQztRQUN0QyxJQUFJLE1BQU0sR0FBRyxRQUFRLENBQUMsQ0FBQyxDQUFDLENBQUM7UUFDekIsSUFBSSxNQUFNLElBQUksR0FBRyxFQUFFO1lBQ2YsTUFBTSxHQUFHLE1BQU0sQ0FBQyxNQUFNLENBQUM7Z0JBQ25CLE1BQU0sTUFBTSxDQUFDLElBQUksQ0FBQyxDQUFDLENBQUM7Z0JBQ3BCLE1BQU0sQ0FBQyxLQUFLLENBQUMsQ0FBQyxDQUFDO2FBQ2xCLENBQUMsQ0FBQyxXQUFXLENBQUMsQ0FBQyxDQUFDLENBQUM7U0FDckI7UUFFRCxPQUFPLE1BQU0sQ0FBQyxJQUFJLENBQUMsTUFBTSxJQUFJLENBQUMsQ0FBQyxDQUFDO0lBQ3BDLENBQUM7O0FBekNMLGtEQTBDQztBQXpDVSx1QkFBRyxHQUFHLE1BQU0sQ0FBQyxJQUFJLENBQUMsSUFBSSxFQUFFLEtBQUssQ0FBQyxDQUFDO0FBQy9CLGdDQUFZLEdBQUcsTUFBTSxDQUFDLElBQUksQ0FBQyxVQUFVLEVBQUUsS0FBSyxDQUFDLENBQUM7QUEwQ3pEOzs7O0dBSUc7QUFDSCxNQUFhLHFCQUFzQixTQUFRLHVCQUFVO0lBQXJEOztRQUNJLHFCQUFnQixHQUFHLG1CQUFtQixDQUFDO0lBQzNDLENBQUM7Q0FBQTtBQUZELHNEQUVDIn0=

@@ -1,0 +1,30 @@
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __exportStar = (this && this.__exportStar) || function(m, exports) {
+    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.RPCMessageToError = void 0;
+const RPCBaseErrors_1 = require("./RPCBaseErrors");
+const RPCErrorList_1 = require("./RPCErrorList");
+function RPCMessageToError(rpcError, request) {
+    for (const [msgRegex, Cls] of RPCErrorList_1.rpcErrorRe) {
+        const m = rpcError.errorMessage.match(msgRegex);
+        if (m) {
+            const capture = m.length === 2 ? parseInt(m[1]) : null;
+            return new Cls({ request: request, capture: capture });
+        }
+    }
+    return new RPCBaseErrors_1.RPCError(rpcError.errorMessage, request, rpcError.errorCode);
+}
+exports.RPCMessageToError = RPCMessageToError;
+__exportStar(require("./Common"), exports);
+__exportStar(require("./RPCBaseErrors"), exports);
+__exportStar(require("./RPCErrorList"), exports);
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiaW5kZXguanMiLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyIuLi8uLi9ncmFtanMvZXJyb3JzL2luZGV4LnRzIl0sIm5hbWVzIjpbXSwibWFwcGluZ3MiOiI7Ozs7Ozs7Ozs7Ozs7QUFRQSxtREFBMkM7QUFDM0MsaURBQTRDO0FBRTVDLFNBQWdCLGlCQUFpQixDQUM3QixRQUFzQixFQUN0QixPQUF1QjtJQUV2QixLQUFLLE1BQU0sQ0FBQyxRQUFRLEVBQUUsR0FBRyxDQUFDLElBQUkseUJBQVUsRUFBRTtRQUN0QyxNQUFNLENBQUMsR0FBRyxRQUFRLENBQUMsWUFBWSxDQUFDLEtBQUssQ0FBQyxRQUFRLENBQUMsQ0FBQztRQUNoRCxJQUFJLENBQUMsRUFBRTtZQUNILE1BQU0sT0FBTyxHQUFHLENBQUMsQ0FBQyxNQUFNLEtBQUssQ0FBQyxDQUFDLENBQUMsQ0FBQyxRQUFRLENBQUMsQ0FBQyxDQUFDLENBQUMsQ0FBQyxDQUFDLENBQUMsQ0FBQyxDQUFDLElBQUksQ0FBQztZQUN2RCxPQUFPLElBQUksR0FBRyxDQUFDLEVBQUUsT0FBTyxFQUFFLE9BQU8sRUFBRSxPQUFPLEVBQUUsT0FBTyxFQUFFLENBQUMsQ0FBQztTQUMxRDtLQUNKO0lBQ0QsT0FBTyxJQUFJLHdCQUFRLENBQUMsUUFBUSxDQUFDLFlBQVksRUFBRSxPQUFPLEVBQUUsUUFBUSxDQUFDLFNBQVMsQ0FBQyxDQUFDO0FBQzVFLENBQUM7QUFaRCw4Q0FZQztBQUVELDJDQUF5QjtBQUN6QixrREFBZ0M7QUFDaEMsaURBQStCIn0=
