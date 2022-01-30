@@ -1,29 +1,65 @@
-const { TelegramClient } = require("telegram");
-const { StringSession } = require("telegram/sessions");
-const input = require("input"); // npm i input
+const MTProto = require("@mtproto/core");
+const path = require("path");
+const input = require("input");
+require("dotenv").config();
 
-const apiId = 12484911;
-const apiHash = "f614d3050d38775a1696d09c4ecd7e71";
-const stringSession = new StringSession(
-	"1AgAOMTQ5LjE1NC4xNjcuNDEBuxLYib+x2S99t2HfG/vU7zJh89bUE2E4356MCQPj6tnFjsxLwsrg7VpvvMBC79C5+i+xXNFfhURIufpP0UFHeRnmIt4/X7u8juxtutjROf23RBMnX4cFhUk2DMRESb2VDJyhqlVdYH9AIiCVOUo+5N44UKN7tOR9e70OuSbbUjLjAybkURUZdEWfOYPDmrS3e7qvbJ/qjQnZR6Durx/h0YWvW3k1YBpCmS+AqVL9++tnSjeGMqVmOHhbg2XmhPhOI7rKWDX6sZE8woegEpGSejX0enGzQvSdwR9ds5Bd2j/BjwvQ124S4hub0lX9K7nSjLrkvTlOhsGoLSsumv8kTTY="
-); // fill this later with the value from session.save()
+// console.log(process.env.TELEGRAM_APP_ID, process.env.TELEGRAM_APP_HASH);
 
-(async () => {
-	console.log("Loading interactive example...");
-	const client = new TelegramClient(stringSession, apiId, apiHash, {
-		connectionRetries: 5,
-	});
-	await client.start({
-		phoneNumber: async () => await input.text("Please enter your number: "),
-		password: async () => await input.text("Please enter your password: "),
-		phoneCode: async () =>
-			await input.text("Please enter the code you received: "),
-		onError: (err) => console.log(err),
-	});
-	console.log("You should now be connected.");
-	console.log(client.session.save()); // Save this string to avoid logging in again
-	let test = await client.sendMessage("funnypunk", {
-		message: "Hello, this message sent via Custom telegram client!",
-	});
-	console.log(test);
-})();
+class API {
+	constructor(API_ID, API_HASH) {
+		this.mtproto = new MTProto({
+			api_id: API_ID,
+			api_hash: API_HASH,
+
+			storageOptions: {
+				path: path.resolve(__dirname, "./data/1.json"),
+			},
+		});
+	}
+
+	async call(method, params, options = {}) {
+		try {
+			const result = await this.mtproto.call(method, params, options);
+
+			return result;
+		} catch (error) {
+			console.log(`${method} error:`, error);
+
+			const { error_code, error_message } = error;
+
+			if (error_code === 420) {
+				const seconds = Number(error_message.split("FLOOD_WAIT_")[1]);
+				const ms = seconds * 1000;
+
+				await sleep(ms);
+
+				return this.call(method, params, options);
+			}
+
+			if (error_code === 303) {
+				const [type, dcIdAsString] = error_message.split("_MIGRATE_");
+
+				const dcId = Number(dcIdAsString);
+
+				// If auth.sendCode call on incorrect DC need change default DC, because
+				// call auth.signIn on incorrect DC return PHONE_CODE_EXPIRED error
+				if (type === "PHONE") {
+					await this.mtproto.setDefaultDc(dcId);
+				} else {
+					Object.assign(options, { dcId });
+				}
+
+				return this.call(method, params, options);
+			}
+
+			return Promise.reject(error);
+		}
+	}
+}
+
+const CustomTelegramClient = new API(
+	process.env.TELEGRAM_APP_ID,
+	process.env.TELEGRAM_APP_HASH
+);
+
+module.exports = CustomTelegramClient;
