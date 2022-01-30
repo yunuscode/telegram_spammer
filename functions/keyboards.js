@@ -3,8 +3,7 @@ module.exports = class Keyboards {
 		return {
 			keyboard: [
 				["Check balance", "Send Bulk Message"],
-				["Account stats", "Add accounts"],
-				["Add members", "Prices"],
+				["Account management", "Add members"],
 			],
 			resize_keyboard: true,
 		};

@@ -11,4 +11,13 @@ module.exports = class Queryies {
 		let user = await db.users.create({ chat_id, step: 1 });
 		return user;
 	}
+
+	static async getNumbersCountByCountry(db, country) {
+		let count = await db.accounts.count({
+			where: {
+				account_country: country,
+			},
+		});
+		return count;
+	}
 };
