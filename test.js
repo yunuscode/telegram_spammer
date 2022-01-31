@@ -1,55 +1,65 @@
 const API = require("./client");
-const input = require("input");
+// const input = require("input");
 
 // module.exports.sendMessageByUser =
 
-async function sendMessageByUser(phone_number, username) {
+// async function sendMessageByUser(phone_number, username) {
+// 	const mtproto = new API(
+// 		process.env.TELEGRAM_APP_ID,
+// 		process.env.TELEGRAM_APP_HASH,
+// 		phone_number
+// 	);
+
+// 	const user = await getUser(mtproto);
+
+// 	let r = await mtproto.call("messages.getAllChats", {
+// 		except_ids: [],
+// 	});
+
+// 	const channels = r.chats.filter((e) => e._ == "channel");
+// 	// console.log(channels.length);
+
+// 	for (let i of channels) {
+// 		let x = await mtproto.call("channels.leaveChannel", {
+// 			channel: {
+// 				_: "inputPeerChannel",
+// 				channel_id: i.id,
+// 				access_hash: i.access_hash,
+// 			},
+// 		});
+// 		console.log(x);
+// 	}
+
+// 	// if (user) {
+// 	// 	let result = await searchByUsername(mtproto, "muhammad_yunusoff");
+// 	// 	await sendMessage(mtproto, result);
+// 	// 	console.log(result);
+// 	// }
+// }
+
+module.exports.addNewUser = async function addNewUser(
+	phone_number,
+	gettingSMSFunction,
+	setRevise,
+	order_id
+) {
+	console.log("Ishlab ketdi");
 	const mtproto = new API(
 		process.env.TELEGRAM_APP_ID,
 		process.env.TELEGRAM_APP_HASH,
 		phone_number
 	);
-
-	const user = await getUser(mtproto);
-
-	let r = await mtproto.call("messages.getAllChats", {
-		except_ids: [],
-	});
-
-	const channels = r.chats.filter((e) => e._ == "channel");
-	// console.log(channels.length);
-
-	for (let i of channels) {
-		let x = await mtproto.call("channels.leaveChannel", {
-			channel: {
-				_: "inputPeerChannel",
-				channel_id: i.id,
-				access_hash: i.access_hash,
-			},
-		});
-		console.log(x);
-	}
-
-	// if (user) {
-	// 	let result = await searchByUsername(mtproto, "muhammad_yunusoff");
-	// 	await sendMessage(mtproto, result);
-	// 	console.log(result);
-	// }
-}
-
-// module.exports.addNewUser =
-async function addNewUser(phone_number) {
-	const mtproto = new API(
-		process.env.TELEGRAM_APP_ID,
-		process.env.TELEGRAM_APP_HASH,
-		phone_number
-	);
-
-	const phone = phone_number;
-	const { phone_code_hash } = await sendCode(mtproto, phone);
 
 	try {
-		const code = await input.text("Code");
+		const phone = phone_number;
+		const { phone_code_hash } = await sendCode(mtproto, phone);
+
+		if (!phone_code_hash) {
+			return;
+		}
+
+		const code = await gettingSMSFunction();
+		console.log(code);
 
 		const signInResult = await signIn(mtproto, {
 			code,
@@ -63,38 +73,18 @@ async function addNewUser(phone_number) {
 				phone_code_hash,
 			});
 		}
+
+		return {
+			error: false,
+		};
 	} catch (error) {
-		if (error.error_message !== "SESSION_PASSWORD_NEEDED") {
-			console.log(`error:`, error);
-
-			return;
-		}
-
-		// 2FA
-
-		const password = "uZ_6860665";
-
-		const { srp_id, current_algo, srp_B } = await getPassword(mtproto);
-		const { g, p, salt1, salt2 } = current_algo;
-
-		const { A, M1 } = await mtproto.mtproto.crypto.getSRPParams({
-			g,
-			p,
-			salt1,
-			salt2,
-			gB: srp_B,
-			password,
-		});
-
-		const checkPasswordResult = await checkPassword(mtproto, {
-			srp_id,
-			A,
-			M1,
-		});
-
-		console.log(checkPasswordResult);
+		await setRevise(order_id);
+		console.log(error);
+		return {
+			error: true,
+		};
 	}
-}
+};
 
 async function searchByUsername(api, username) {
 	try {
@@ -187,4 +177,4 @@ function checkPassword(api, { srp_id, A, M1 }) {
 }
 
 // addNewUser(77756838012);
-sendMessageByUser(77756838012);
+// sendMessageByUser(77756838012);

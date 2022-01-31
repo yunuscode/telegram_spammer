@@ -1,6 +1,8 @@
 const MTProto = require("@mtproto/core");
 const path = require("path");
 const input = require("input");
+const sleep = require("sleep");
+
 require("dotenv").config();
 
 // console.log(process.env.TELEGRAM_APP_ID, process.env.TELEGRAM_APP_HASH);
@@ -23,15 +25,13 @@ class API {
 
 			return result;
 		} catch (error) {
-			console.log(`${method} error:`, error);
-
 			const { error_code, error_message } = error;
 
 			if (error_code === 420) {
 				const seconds = Number(error_message.split("FLOOD_WAIT_")[1]);
 				const ms = seconds * 1000;
 
-				await sleep(ms);
+				await sleep.msleep(ms);
 
 				return this.call(method, params, options);
 			}

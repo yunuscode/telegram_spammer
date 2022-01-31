@@ -1,6 +1,13 @@
+const { addNewUser } = require("../test");
 const { helloKeyboard, getNumberList } = require("./keyboards");
 const { createUser, getNumbersCountByCountry } = require("./queries");
-const { checkBalance, getAccountsPrices, getOrder } = require("./smsService");
+const {
+	checkBalance,
+	getAccountsPrices,
+	getOrder,
+	getState,
+	setRevise,
+} = require("./smsService");
 
 module.exports = class Messages {
 	static async sendHello(bot, database, event) {
@@ -89,5 +96,80 @@ module.exports = class Messages {
 				chat_id: event.chat.id,
 				message_id: sentMessage.message_id,
 			});
+	}
+
+	static async addAccountMessage(bot, database, event, cb_data) {
+		let sentMessage = await bot.sendMessage(
+			event.chat.id,
+			`⚡️ <b>Attempting to getting number has been started</b>\n\n<i>- This message is updated automatically</i>`,
+			{
+				parse_mode: "html",
+			}
+		);
+
+		let order, order_state;
+
+		if (cb_data == "get_indonesian_number") {
+			order = await getOrder(62);
+			console.log(order);
+			if (order?.response !== 1 || order.error) {
+				bot.editMessageText(`Error with number's count or balance`, {
+					chat_id: event.chat.id,
+					message_id: sentMessage.message_id,
+				});
+				return;
+			}
+
+			// order = {
+			// 	tzid: 53244320,
+			// };
+		}
+
+		order_state = await getState(order.tzid);
+
+		order_state = order_state[0];
+		order_state.number = +order_state.number;
+
+		console.log(order_state);
+
+		// 7 - Russia, 77 - Kazakhstan, 62 - Indonesia
+
+		// let order = await getOrder()
+
+		const account = await database.accounts.create({
+			account_id: order.tzid,
+			account_number: order_state.number,
+			account_country: "nd",
+		});
+
+		let result = await addNewUser(
+			`${order_state.number}`,
+			async function () {
+				async function getSMSResult(attemt) {
+					let data = await getState(order.tzid);
+					data = data[0];
+
+					if (data?.msg) {
+						return data?.msg[data?.msg.length - 1].msg;
+					}
+
+					if (attemt == 5) {
+						return false;
+					}
+
+					return await new Promise((resolve, reject) => {
+						setTimeout(() => {
+							resolve(getSMSResult(attemt + 1));
+						}, 20000);
+					});
+				}
+
+				return await getSMSResult(1);
+			},
+			setRevise,
+			order.tzid
+		);
+
+		console.log(result);
 	}
 };

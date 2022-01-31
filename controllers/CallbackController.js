@@ -8,6 +8,11 @@ module.exports = async function CallbackController(bot, database, event) {
 		await Messages.sendHello(bot, database, event.message);
 	} else if (event.data) {
 		console.log(event.data);
-		// await Messages.mainMenu(bot, database, event);
+		await Messages.addAccountMessage(
+			bot,
+			database,
+			event.message,
+			event.data
+		);
 	}
 };
