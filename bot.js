@@ -1,5 +1,6 @@
 require("dotenv").config();
 const TelegramBot = require("node-telegram-bot-api");
+const CallbackController = require("./controllers/CallbackController");
 const MessageController = require("./controllers/MessageController");
 const psql = require("./modules/sequelize");
 
@@ -13,6 +14,11 @@ async function bot() {
 	botInstance.on(
 		"message",
 		async (event) => await MessageController(botInstance, database, event)
+	);
+
+	botInstance.on(
+		"callback_query",
+		async (event) => await CallbackController(botInstance, database, event)
 	);
 }
 
