@@ -1,4 +1,4 @@
-const { helloKeyboard } = require("./keyboards");
+const { helloKeyboard, getNumberList } = require("./keyboards");
 const { createUser, getNumbersCountByCountry } = require("./queries");
 const { checkBalance, getAccountsPrices, getOrder } = require("./smsService");
 
@@ -65,6 +65,7 @@ module.exports = class Messages {
 			await bot.editMessageText(msg_text, {
 				chat_id: event.chat.id,
 				message_id: sentMessage.message_id,
+				reply_markup: getNumberList(),
 			});
 		} catch (error) {
 			console.log(error);

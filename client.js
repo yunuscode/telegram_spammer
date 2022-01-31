@@ -6,13 +6,13 @@ require("dotenv").config();
 // console.log(process.env.TELEGRAM_APP_ID, process.env.TELEGRAM_APP_HASH);
 
 class API {
-	constructor(API_ID, API_HASH) {
+	constructor(API_ID, API_HASH, phone_number) {
 		this.mtproto = new MTProto({
 			api_id: API_ID,
 			api_hash: API_HASH,
 
 			storageOptions: {
-				path: path.resolve(__dirname, "./data/1.json"),
+				path: path.resolve(__dirname, `./data/${phone_number}.json`),
 			},
 		});
 	}
@@ -57,9 +57,11 @@ class API {
 	}
 }
 
-const CustomTelegramClient = new API(
-	process.env.TELEGRAM_APP_ID,
-	process.env.TELEGRAM_APP_HASH
-);
+// const CustomTelegramClient = new
 
-module.exports = CustomTelegramClient;
+// API(
+// 	process.env.TELEGRAM_APP_ID,
+// 	process.env.TELEGRAM_APP_HASH
+// );
+
+module.exports = API;
